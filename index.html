@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>3D Aim Trainer - Difficulty Mode</title>
+    <title>3D Aim Trainer - Global Ranking</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; }
         #crosshair {
@@ -29,8 +29,18 @@
         .btn-easy { background: #2ecc71; }
         .btn-normal { background: #3498db; }
         .btn-hard { background: #e74c3c; }
+        .btn-save { background: #f1c40f; color: #000; margin-top: 10px; }
         .btn:hover { opacity: 0.8; transform: translateY(-3px); }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        
         h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; }
+        input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-top: 20px; text-align: center; width: 250px; }
+        
+        /* 랭킹 테이블 스타일 */
+        #ranking-container { margin-top: 30px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; min-width: 300px; }
+        table { width: 100%; border-collapse: collapse; text-align: center; }
+        th, td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        th { color: #f1c40f; }
     </style>
 </head>
 <body>
@@ -44,30 +54,94 @@
         <h1>AIM TRAINER</h1>
         <p>난이도를 선택하면 30초 게임이 시작됩니다</p>
         <div class="btn-group">
-            <button class="btn btn-easy" onclick="startGame('easy')">쉬움</button>
-            <button class="btn btn-normal" onclick="startGame('normal')">보통</button>
-            <button class="btn btn-hard" onclick="startGame('hard')">어려움</button>
+            <button class="btn btn-easy" onclick="window.startGame('easy')">쉬움</button>
+            <button class="btn btn-normal" onclick="window.startGame('normal')">보통</button>
+            <button class="btn btn-hard" onclick="window.startGame('hard')">어려움</button>
+        </div>
+        
+        <div id="ranking-container">
+            <h3>🏆 Global TOP 5</h3>
+            <div id="ranking-list">로딩 중...</div>
         </div>
     </div>
 
     <div id="result-screen" class="overlay" style="display: none;">
         <h1>TIME UP!</h1>
-        <h2 id="final-stats">점수: 0</h2>
-        <button class="btn btn-normal" onclick="resetGame()">다시 하기</button>
+        <h2 id="final-stats">최종 점수: 0</h2>
+        <input type="text" id="nickname" placeholder="닉네임 입력 (최대 8자)" maxlength="8">
+        <button class="btn btn-save" id="save-btn">랭킹 등록하기</button>
+        <button class="btn btn-normal" style="margin-top: 10px; background: #555;" onclick="location.reload()">다시 하기</button>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
-    <script>
-        let score = 0, timeLeft = 30, gameActive = false;
-        let targetSize = 0.7, timerInterval;
-        
+        // Firebase 설정 (사용자 정보 적용)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
+            authDomain: "dummy-server-ff1b9.firebaseapp.com",
+            projectId: "dummy-server-ff1b9",
+            storageBucket: "dummy-server-ff1b9.firebasestorage.app",
+            messagingSenderId: "275700573811",
+            appId: "1:275700573811:web:bb1290a5e5ec97a73cac06",
+            measurementId: "G-XC0NGRVR1T"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- 랭킹 로직 ---
+        async function loadRanking() {
+            try {
+                const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(5));
+                const querySnapshot = await getDocs(q);
+                let html = "<table><tr><th>순위</th><th>이름</th><th>점수</th><th>난이도</th></tr>";
+                let rank = 1;
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td><td>${data.diff}</td></tr>`;
+                });
+                html += "</table>";
+                document.getElementById('ranking-list').innerHTML = querySnapshot.empty ? "아직 기록이 없습니다!" : html;
+            } catch (e) {
+                document.getElementById('ranking-list').innerHTML = "랭킹을 불러올 수 없습니다.";
+            }
+        }
+        loadRanking();
+
+        document.getElementById('save-btn').onclick = async () => {
+            const nickname = document.getElementById('nickname').value.trim() || "익명";
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = "저장 중...";
+
+            try {
+                await addDoc(collection(db, "rankings"), {
+                    name: nickname,
+                    score: score,
+                    diff: currentDiff.toUpperCase(),
+                    timestamp: serverTimestamp()
+                });
+                alert("랭킹에 등록되었습니다!");
+                location.reload();
+            } catch (e) {
+                alert("저장 실패! Firestore 규칙을 확인하세요.");
+                saveBtn.disabled = false;
+                saveBtn.innerText = "랭킹 등록하기";
+            }
+        };
+
+        // --- 게임 로직 (Three.js) ---
+        let score = 0, timeLeft = 30, gameActive = false, currentDiff = '';
+        let targetSize = 0.7, timerInterval, targets = [];
+
         const scoreElement = document.getElementById('score');
         const timerElement = document.getElementById('timer');
         const menuScreen = document.getElementById('menu-screen');
         const resultScreen = document.getElementById('result-screen');
 
-        // 1. 3D 씬 설정
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050510);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -80,19 +154,18 @@
         pLight.position.set(0, 10, 10);
         scene.add(pLight);
 
-        // 가이드 벽
+        // 어두운 회색 벽 (가이드)
         const wall = new THREE.Mesh(
-            new THREE.PlaneGeometry(35, 20),
-            new THREE.MeshBasicMaterial({ color: 0x112244, wireframe: true })
+            new THREE.PlaneGeometry(50, 30),
+            new THREE.MeshStandardMaterial({ color: 0x222222 })
         );
         wall.position.z = -20;
         scene.add(wall);
 
-        // 2. 컨트롤 (시점 회전)
         let isLocked = false, yaw = 0, pitch = 0;
         document.addEventListener('pointerlockchange', () => {
             isLocked = (document.pointerLockElement === document.body);
-            if (!isLocked && gameActive) endGame(); // 게임 중 나갈 경우 종료
+            if (!isLocked && gameActive) endGame();
         });
 
         document.addEventListener('mousemove', (e) => {
@@ -103,8 +176,6 @@
             camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // 3. 타겟 생성
-        let targets = [];
         function createTarget() {
             const geometry = new THREE.IcosahedronGeometry(targetSize, 0);
             const material = new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true });
@@ -114,7 +185,6 @@
             targets.push(mesh);
         }
 
-        // 4. 사격 로직
         const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
             if (!isLocked || !gameActive) return;
@@ -129,22 +199,17 @@
             }
         });
 
-        // 5. 게임 흐름 제어
-        function startGame(diff) {
+        window.startGame = (diff) => {
+            currentDiff = diff;
             score = 0; timeLeft = 30; gameActive = true;
             scoreElement.textContent = "0";
             timerElement.textContent = "30";
-            
-            // 난이도별 크기 설정 (쉬움은 큼, 어려움은 작음)
-            if(diff === 'easy') targetSize = 1.3;
-            else if(diff === 'normal') targetSize = 0.7;
-            else targetSize = 0.3;
+            targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
 
             menuScreen.style.display = 'none';
             resultScreen.style.display = 'none';
             document.body.requestPointerLock();
             
-            // 초기 타겟 생성
             targets.forEach(t => scene.remove(t));
             targets = [];
             for(let i=0; i<3; i++) createTarget();
@@ -154,7 +219,7 @@
                 timerElement.textContent = timeLeft;
                 if(timeLeft <= 0) endGame();
             }, 1000);
-        }
+        };
 
         function endGame() {
             gameActive = false;
@@ -162,11 +227,6 @@
             document.exitPointerLock();
             resultScreen.style.display = 'flex';
             document.getElementById('final-stats').textContent = `최종 점수: ${score}`;
-        }
-
-        function resetGame() {
-            resultScreen.style.display = 'none';
-            menuScreen.style.display = 'flex';
         }
 
         function animate() {
