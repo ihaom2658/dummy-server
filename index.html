@@ -1,1 +1,95 @@
-<h1>Hello Vercel!</h1>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반응 속도 테스트</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Pretendard', sans-serif;
+            background-color: #2c3e50;
+            color: white;
+            transition: background-color 0.2s;
+            user-select: none; /* 드래그 방지 */
+        }
+        #game-area {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        h1 { font-size: 3rem; margin: 0; }
+        p { font-size: 1.5rem; }
+        .record { margin-top: 20px; font-size: 1rem; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+    <div id="game-area">
+        <h1 id="message">클릭해서 시작하세요</h1>
+        <p id="description">초록색이 되면 최대한 빨리 클릭!</p>
+        <div class="record" id="best-record">최고 기록: - ms</div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('game-area');
+        const message = document.getElementById('message');
+        const description = document.getElementById('description');
+        const bestRecordDisplay = document.getElementById('best-record');
+
+        let status = 'waiting'; // waiting, ready, active
+        let startTime;
+        let timer;
+        let bestRecord = Infinity;
+
+        gameArea.addEventListener('mousedown', () => {
+            if (status === 'waiting') {
+                // 시작 대기 상태
+                status = 'ready';
+                gameArea.parentElement.style.backgroundColor = '#e74c3c'; // 빨간색
+                message.textContent = '초록색이 될 때까지 대기...';
+                description.textContent = '너무 빨리 누르면 무효!';
+
+                const delay = Math.floor(Math.random() * 3000) + 2000; // 2~5초 랜덤
+                timer = setTimeout(() => {
+                    status = 'active';
+                    startTime = new Date().getTime();
+                    gameArea.parentElement.style.backgroundColor = '#2ecc71'; // 초록색
+                    message.textContent = '지금 클릭!!!';
+                }, delay);
+
+            } else if (status === 'ready') {
+                // 너무 빨리 눌렀을 때
+                clearTimeout(timer);
+                status = 'waiting';
+                gameArea.parentElement.style.backgroundColor = '#2c3e50';
+                message.textContent = '너무 빨랐어요! 😂';
+                description.textContent = '다시 하려면 클릭하세요.';
+
+            } else if (status === 'active') {
+                // 정상적으로 클릭했을 때
+                const endTime = new Date().getTime();
+                const reactionTime = endTime - startTime;
+                status = 'waiting';
+                gameArea.parentElement.style.backgroundColor = '#2c3e50';
+                
+                if (reactionTime < bestRecord) {
+                    bestRecord = reactionTime;
+                    bestRecordDisplay.textContent = `최고 기록: ${bestRecord} ms`;
+                }
+
+                message.textContent = `${reactionTime} ms!`;
+                description.textContent = '다시 하려면 클릭하세요.';
+            }
+        });
+    </script>
+</body>
+</html>
