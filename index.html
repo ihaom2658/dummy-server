@@ -5,16 +5,12 @@
     <title>MiniGame World - Beta</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; }
-        
-        /* 공통 오버레이 스타일 */
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
         .hidden { display: none !important; }
-
-        /* [게임 1] 에임 연습장 전용 스타일 (기존 스타일 유지) */
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 16px; height: 16px;
             border: 2px solid #00ff00; border-radius: 50%;
@@ -24,8 +20,6 @@
             position: absolute; top: 20px; left: 20px; font-size: 22px; z-index: 50;
             text-shadow: 2px 2px 4px #000; display: none;
         }
-
-        /* 버튼 및 메뉴 스타일 */
         .btn {
             padding: 15px 40px; font-size: 20px; cursor: pointer; font-weight: bold;
             border: none; border-radius: 10px; transition: 0.2s; color: white; margin: 10px;
@@ -33,10 +27,7 @@
         .btn-menu { background: #e67e22; width: 350px; text-align: left; }
         .btn-menu span { float: right; }
         .btn:hover { transform: scale(1.03); filter: brightness(1.1); }
-        
-        input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-top: 20px; text-align: center; }
-
-        /* 타이밍 게임용 캔버스 */
+        input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-top: 20px; text-align: center; color: #000; }
         #timing-canvas { position: absolute; top: 0; left: 0; display: none; cursor: crosshair; }
     </style>
 </head>
@@ -88,12 +79,19 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- 전역 제어 변수 ---
         let currentMode = ''; 
         let score = 0, timeLeft = 30, gameActive = false, selectedDiff = '';
         let timerInterval;
 
-        // --- 메뉴 전환 ---
+        // --- 중요: ESC 종료 로직 복구 ---
+        document.addEventListener('pointerlockchange', () => {
+            // 마우스 커서가 다시 나타났고(isLocked가 false), 게임이 실행 중이라면 종료 처리
+            const isLocked = (document.pointerLockElement === document.body);
+            if (!isLocked && gameActive && currentMode === 'aim') {
+                stopGame();
+            }
+        });
+
         window.selectGame = (mode) => {
             currentMode = mode;
             document.getElementById('main-menu').classList.add('hidden');
@@ -123,19 +121,23 @@
         };
 
         function stopGame() {
+            if(!gameActive) return; // 이미 종료되었다면 중복 실행 방지
             gameActive = false;
             clearInterval(timerInterval);
+            
+            // UI 정리
             document.exitPointerLock?.();
             document.getElementById('game-ui').style.display = 'none';
             document.getElementById('crosshair').style.display = 'none';
             document.getElementById('timing-canvas').style.display = 'none';
             if(renderer) renderer.domElement.style.display = 'none';
             
+            // 결과창 표시
             document.getElementById('result-screen').classList.remove('hidden');
             document.getElementById('final-stats').innerText = `${currentMode.toUpperCase()} (${selectedDiff}): ${score}점`;
         }
 
-        // --- [1번] 에임 연습장 엔진 (기존 코드 그대로 이식) ---
+        // --- [1번] 에임 연습장 엔진 ---
         let scene, camera, renderer, targets = [], targetSize = 0.7;
 
         function startAimGame(diff) {
@@ -150,12 +152,7 @@
                 renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 document.body.appendChild(renderer.domElement);
-                
                 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-                const pLight = new THREE.PointLight(0xffffff, 1);
-                pLight.position.set(0, 10, 10);
-                scene.add(pLight);
-
                 const wall = new THREE.Mesh(new THREE.PlaneGeometry(50, 30), new THREE.MeshStandardMaterial({ color: 0x222222 }));
                 wall.position.z = -20; scene.add(wall);
             }
@@ -178,7 +175,6 @@
             renderer.render(scene, camera);
         }
 
-        // 에임 사격 처리
         const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
@@ -192,7 +188,6 @@
             }
         });
 
-        // 에임 마우스 회전
         let yaw = 0, pitch = 0;
         document.addEventListener('mousemove', (e) => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
@@ -219,15 +214,12 @@
             if(!gameActive || currentMode !== 'timing') return;
             requestAnimationFrame(animateTiming);
             tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
-            
             const cx = tCanvas.width/2; const cy = tCanvas.height/2;
             const targetSize = 120;
-
             tCtx.strokeStyle = "#00ff00"; tCtx.lineWidth = 5;
             tCtx.strokeRect(cx - targetSize/2, cy - targetSize/2, targetSize, targetSize);
             tCtx.strokeStyle = "#fff"; tCtx.lineWidth = 2;
             tCtx.strokeRect(cx - ringSize/2, cy - ringSize/2, ringSize, ringSize);
-
             ringSize -= ringSpeed;
             if(ringSize < 40) ringSize = 450;
         }
@@ -240,7 +232,7 @@
             ringSize = 450;
         };
 
-        // --- 점수 저장 ---
+        // 점수 저장
         document.getElementById('save-btn').onclick = async () => {
             const nick = document.getElementById('nickname').value.trim() || "익명";
             document.getElementById('save-btn').disabled = true;
