@@ -11,6 +11,16 @@
             justify-content: center; align-items: center; z-index: 100;
         }
         .hidden { display: none !important; }
+        
+        /* 랭킹 컨테이너 스타일 (기존 스타일 복구) */
+        #ranking-container { margin-top: 25px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; width: 380px; }
+        .tab-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
+        .tab-btn { background: #444; color: white; border: none; padding: 6px 15px; cursor: pointer; border-radius: 5px; font-size: 13px; }
+        .tab-btn.active { background: #f1c40f; color: black; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
+        th, td { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { color: #f1c40f; }
+
         #crosshair {
             position: absolute; top: 50%; left: 50%; width: 16px; height: 16px;
             border: 2px solid #00ff00; border-radius: 50%;
@@ -20,13 +30,8 @@
             position: absolute; top: 20px; left: 20px; font-size: 22px; z-index: 50;
             text-shadow: 2px 2px 4px #000; display: none;
         }
-        .btn {
-            padding: 15px 40px; font-size: 20px; cursor: pointer; font-weight: bold;
-            border: none; border-radius: 10px; transition: 0.2s; color: white; margin: 10px;
-        }
-        .btn-menu { background: #e67e22; width: 350px; text-align: left; }
-        .btn-menu span { float: right; }
-        .btn:hover { transform: scale(1.03); filter: brightness(1.1); }
+        .btn { padding: 12px 30px; font-size: 18px; cursor: pointer; font-weight: bold; border: none; border-radius: 8px; transition: 0.2s; color: white; margin: 5px; }
+        .btn-menu { background: #e67e22; width: 350px; text-align: left; padding: 20px; }
         input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-top: 20px; text-align: center; color: #000; }
         #timing-canvas { position: absolute; top: 0; left: 0; display: none; cursor: crosshair; }
     </style>
@@ -36,36 +41,44 @@
     <div id="main-menu" class="overlay">
         <h1>🎮 MINI-GAME WORLD</h1>
         <p>플레이할 게임을 선택하세요</p>
-        <button class="btn btn-menu" onclick="selectGame('aim')">1. 🎯 에임 연습장 <span>ENTER</span></button>
-        <button class="btn btn-menu" style="background:#9b59b6;" onclick="selectGame('timing')">2. ⏱️ 타이밍 맞추기 <span>ENTER</span></button>
+        <button class="btn btn-menu" onclick="selectGame('aim')">1. 🎯 에임 연습장</button>
+        <button class="btn btn-menu" style="background:#9b59b6;" onclick="selectGame('timing')">2. ⏱️ 타이밍 맞추기</button>
     </div>
 
     <div id="sub-menu" class="overlay hidden">
         <h1 id="sub-title">GAME NAME</h1>
-        <p>난이도를 선택하면 30초 게임이 시작됩니다</p>
         <div class="btn-group">
             <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">쉬움</button>
             <button class="btn" style="background:#3498db" onclick="runGame('normal')">보통</button>
             <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">어려움</button>
         </div>
-        <button onclick="location.reload()" style="background:none; border:none; color:#777; cursor:pointer; margin-top:30px;">[ 메인으로 ]</button>
+        
+        <div id="ranking-container">
+            <div class="tab-menu">
+                <button class="tab-btn active" id="tab-EASY" onclick="loadRanking('EASY')">EASY</button>
+                <button class="tab-btn" id="tab-NORMAL" onclick="loadRanking('NORMAL')">NORMAL</button>
+                <button class="tab-btn" id="tab-HARD" onclick="loadRanking('HARD')">HARD</button>
+            </div>
+            <div id="ranking-list">로딩 중...</div>
+        </div>
+        <button onclick="location.reload()" style="background:none; border:none; color:#777; cursor:pointer; margin-top:20px;">[ 처음으로 ]</button>
     </div>
 
     <div id="result-screen" class="overlay hidden">
         <h1>TIME UP!</h1>
         <h2 id="final-stats">최종 점수: 0</h2>
-        <input type="text" id="nickname" placeholder="닉네임 입력 (8자)" maxlength="8">
-        <button class="btn" id="save-btn" style="background:#f1c40f; color:#000; margin-top:15px;">랭킹 등록하기</button>
+        <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="8">
+        <button class="btn" id="save-btn" style="background:#f1c40f; color:#000;">등록</button>
         <button class="btn" style="background:#555;" onclick="location.reload()">다시 하기</button>
     </div>
 
     <div id="crosshair"></div>
-    <div id="game-ui">점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s</div>
+    <div id="game-ui">점수: <span id="score">0</span> | 시간: <span id="timer">30</span>s</div>
     <canvas id="timing-canvas"></canvas>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
         const firebaseConfig = {
@@ -79,93 +92,89 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        let currentMode = ''; 
-        let score = 0, timeLeft = 30, gameActive = false, selectedDiff = '';
-        let timerInterval;
+        let currentMode = '', score = 0, timeLeft = 30, gameActive = false, selectedDiff = '', timerInterval;
 
-        // --- 중요: ESC 종료 로직 복구 ---
+        // ESC 종료
         document.addEventListener('pointerlockchange', () => {
-            // 마우스 커서가 다시 나타났고(isLocked가 false), 게임이 실행 중이라면 종료 처리
-            const isLocked = (document.pointerLockElement === document.body);
-            if (!isLocked && gameActive && currentMode === 'aim') {
-                stopGame();
-            }
+            if (!document.pointerLockElement && gameActive && currentMode === 'aim') stopGame();
         });
 
         window.selectGame = (mode) => {
             currentMode = mode;
             document.getElementById('main-menu').classList.add('hidden');
             document.getElementById('sub-menu').classList.remove('hidden');
-            document.getElementById('sub-title').innerText = mode === 'aim' ? "AIM TRAINER" : "TIMING GAME";
+            document.getElementById('sub-title').innerText = mode === 'aim' ? "🎯 AIM TRAINER" : "⏱️ TIMING GAME";
+            loadRanking('EASY');
+        };
+
+        // 랭킹 불러오기
+        window.loadRanking = async (diff) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
+            const listDiv = document.getElementById('ranking-list');
+            listDiv.innerHTML = "로딩 중...";
+            try {
+                const q = query(collection(db, "rankings"), where("game", "==", currentMode), where("diff", "==", diff), orderBy("score", "desc"), limit(5));
+                const snap = await getDocs(q);
+                let html = "<table><tr><th>순위</th><th>이름</th><th>점수</th></tr>";
+                let rank = 1;
+                snap.forEach(d => { html += `<tr><td>${rank++}</td><td>${d.data().name}</td><td>${d.data().score}</td></tr>`; });
+                listDiv.innerHTML = snap.empty ? "기록 없음" : html + "</table>";
+            } catch (e) { listDiv.innerHTML = "색인 생성 대기 중..."; }
         };
 
         window.runGame = (diff) => {
-            selectedDiff = diff;
-            score = 0; timeLeft = 30; gameActive = true;
+            selectedDiff = diff; score = 0; timeLeft = 30; gameActive = true;
             document.getElementById('sub-menu').classList.add('hidden');
             document.getElementById('game-ui').style.display = 'block';
-            document.getElementById('score').innerText = "0";
-            document.getElementById('timer').innerText = "30";
-            
-            if (currentMode === 'aim') {
-                startAimGame(diff);
-            } else {
-                startTimingGame(diff);
-            }
-
+            if (currentMode === 'aim') startAimGame(diff); else startTimingGame(diff);
             timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('timer').innerText = timeLeft;
+                timeLeft--; document.getElementById('timer').innerText = timeLeft;
                 if (timeLeft <= 0) stopGame();
             }, 1000);
         };
 
         function stopGame() {
-            if(!gameActive) return; // 이미 종료되었다면 중복 실행 방지
-            gameActive = false;
-            clearInterval(timerInterval);
-            
-            // UI 정리
+            if(!gameActive) return;
+            gameActive = false; clearInterval(timerInterval);
             document.exitPointerLock?.();
             document.getElementById('game-ui').style.display = 'none';
             document.getElementById('crosshair').style.display = 'none';
             document.getElementById('timing-canvas').style.display = 'none';
             if(renderer) renderer.domElement.style.display = 'none';
-            
-            // 결과창 표시
             document.getElementById('result-screen').classList.remove('hidden');
-            document.getElementById('final-stats').innerText = `${currentMode.toUpperCase()} (${selectedDiff}): ${score}점`;
+            document.getElementById('final-stats').innerText = `최종 점수: ${score}`;
         }
 
-        // --- [1번] 에임 연습장 엔진 ---
+        // --- 에임 연습장 (표적 외형 복구) ---
         let scene, camera, renderer, targets = [], targetSize = 0.7;
-
         function startAimGame(diff) {
             document.getElementById('crosshair').style.display = 'block';
             document.body.requestPointerLock();
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
-            
             if(!scene) {
-                scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x050510);
+                scene = new THREE.Scene(); scene.background = new THREE.Color(0x050510);
                 camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 document.body.appendChild(renderer.domElement);
                 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-                const wall = new THREE.Mesh(new THREE.PlaneGeometry(50, 30), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+                const pl = new THREE.PointLight(0xffffff, 1); pl.position.set(0,10,10); scene.add(pl);
+                const wall = new THREE.Mesh(new THREE.PlaneGeometry(50,30), new THREE.MeshStandardMaterial({color:0x222222}));
                 wall.position.z = -20; scene.add(wall);
             }
             renderer.domElement.style.display = 'block';
             targets.forEach(t => scene.remove(t)); targets = [];
-            for(let i=0; i<3; i++) spawnTarget();
+            for(let i=0; i<3; i++) spawn();
             animateAim();
         }
 
-        function spawnTarget() {
-            const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(targetSize, 0), new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true }));
-            mesh.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*16 + 2, -19.5);
-            scene.add(mesh); targets.push(mesh);
+        function spawn() {
+            // 기존의 각진 보석 모양 복구 (Icosahedron + FlatShading)
+            const geo = new THREE.IcosahedronGeometry(targetSize, 0);
+            const mat = new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true });
+            const m = new THREE.Mesh(geo, mat);
+            m.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*16 + 2, -19.5);
+            scene.add(m); targets.push(m);
         }
 
         function animateAim() {
@@ -175,16 +184,15 @@
             renderer.render(scene, camera);
         }
 
-        const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
-            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-            const intersects = raycaster.intersectObjects(targets);
-            if(intersects.length > 0) {
-                scene.remove(intersects[0].object);
-                targets = targets.filter(t => t !== intersects[0].object);
+            const r = new THREE.Raycaster(); r.setFromCamera({x:0, y:0}, camera);
+            const hits = r.intersectObjects(targets);
+            if(hits.length > 0) {
+                scene.remove(hits[0].object);
+                targets = targets.filter(t => t !== hits[0].object);
                 score++; document.getElementById('score').innerText = score;
-                spawnTarget();
+                spawn();
             }
         });
 
@@ -196,56 +204,34 @@
             camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // --- [2번] 타이밍 게임 엔진 ---
+        // --- 타이밍 게임 ---
         const tCanvas = document.getElementById('timing-canvas');
         const tCtx = tCanvas.getContext('2d');
         let ringSize = 450, ringSpeed = 4;
-
         function startTimingGame(diff) {
-            tCanvas.style.display = 'block';
-            tCanvas.width = window.innerWidth;
-            tCanvas.height = window.innerHeight;
+            tCanvas.style.display = 'block'; tCanvas.width = window.innerWidth; tCanvas.height = window.innerHeight;
             ringSpeed = (diff === 'easy') ? 3 : (diff === 'normal' ? 5 : 8);
-            ringSize = 450;
             animateTiming();
         }
-
         function animateTiming() {
             if(!gameActive || currentMode !== 'timing') return;
             requestAnimationFrame(animateTiming);
-            tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
-            const cx = tCanvas.width/2; const cy = tCanvas.height/2;
-            const targetSize = 120;
-            tCtx.strokeStyle = "#00ff00"; tCtx.lineWidth = 5;
-            tCtx.strokeRect(cx - targetSize/2, cy - targetSize/2, targetSize, targetSize);
-            tCtx.strokeStyle = "#fff"; tCtx.lineWidth = 2;
-            tCtx.strokeRect(cx - ringSize/2, cy - ringSize/2, ringSize, ringSize);
-            ringSize -= ringSpeed;
-            if(ringSize < 40) ringSize = 450;
+            tCtx.clearRect(0,0,tCanvas.width,tCanvas.height);
+            const cx = tCanvas.width/2, cy = tCanvas.height/2;
+            tCtx.strokeStyle = "#00ff00"; tCtx.lineWidth = 5; tCtx.strokeRect(cx-60, cy-60, 120, 120);
+            tCtx.strokeStyle = "#fff"; tCtx.lineWidth = 2; tCtx.strokeRect(cx-ringSize/2, cy-ringSize/2, ringSize, ringSize);
+            ringSize -= ringSpeed; if(ringSize < 40) ringSize = 450;
         }
+        tCanvas.onclick = () => { if(Math.abs(ringSize - 120) < 30) { score += 10; document.getElementById('score').innerText = score; } ringSize = 450; };
 
-        tCanvas.onclick = () => {
-            if(!gameActive || currentMode !== 'timing') return;
-            if(Math.abs(ringSize - 120) < 30) {
-                score += 10; document.getElementById('score').innerText = score;
-            }
-            ringSize = 450;
-        };
-
-        // 점수 저장
+        // 저장
         document.getElementById('save-btn').onclick = async () => {
             const nick = document.getElementById('nickname').value.trim() || "익명";
             document.getElementById('save-btn').disabled = true;
             try {
-                await addDoc(collection(db, "rankings"), {
-                    game: currentMode,
-                    diff: selectedDiff.toUpperCase(),
-                    name: nick,
-                    score: score,
-                    timestamp: serverTimestamp()
-                });
-                alert("저장 완료!"); location.reload();
-            } catch (e) { alert("오류 발생!"); }
+                await addDoc(collection(db, "rankings"), { game: currentMode, diff: selectedDiff.toUpperCase(), name: nick, score: score, timestamp: serverTimestamp() });
+                location.reload();
+            } catch (e) { alert("저장 실패"); }
         };
     </script>
 </body>
