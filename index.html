@@ -2,19 +2,20 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>MiniGame World - Beta</title>
+    <title>MiniGame World</title>
     <style>
+        /* 기본 스타일 */
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; }
         
-        /* 공통 레이아웃 */
+        /* 화면 오버레이 공통 */
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
         .hidden { display: none !important; }
 
-        /* UI 요소 */
+        /* 메인 UI */
         #game-ui {
             position: absolute; top: 20px; left: 20px; font-size: 22px; z-index: 50;
             text-shadow: 2px 2px 4px #000; display: none;
@@ -25,22 +26,17 @@
             transform: translate(-50%, -50%); pointer-events: none; z-index: 40; display: none;
         }
 
-        /* 버튼 스타일 */
+        /* 버튼 디자인 */
         .btn {
             padding: 20px 50px; font-size: 24px; cursor: pointer; font-weight: bold;
             border: none; border-radius: 12px; transition: 0.3s; color: white; margin: 10px;
         }
-        .btn-game1 { background: #e67e22; width: 350px; } /* 에임 연습장 */
-        .btn-game2 { background: #9b59b6; width: 350px; } /* 타이밍 게임 */
+        .btn-game1 { background: #e67e22; width: 380px; } /* 에임 */
+        .btn-game2 { background: #9b59b6; width: 380px; } /* 타이밍 */
         .btn:hover { transform: scale(1.05); filter: brightness(1.2); }
 
         /* 타이밍 게임용 캔버스 */
         #timing-canvas { position: absolute; top: 0; left: 0; cursor: crosshair; display: none; }
-
-        /* 랭킹 테이블 */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { padding: 5px; border-bottom: 1px solid #444; text-align: center; }
-        th { color: #f1c40f; }
     </style>
 </head>
 <body>
@@ -53,26 +49,25 @@
     </div>
 
     <div id="sub-menu" class="overlay hidden">
-        <h2 id="sub-menu-title">게임 선택</h2>
+        <h2 id="sub-menu-title">난이도 선택</h2>
         <div class="btn-group">
-            <button class="btn btn-easy" style="background:#2ecc71" onclick="startGame('easy')">쉬움</button>
-            <button class="btn btn-normal" style="background:#3498db" onclick="startGame('normal')">보통</button>
-            <button class="btn btn-hard" style="background:#e74c3c" onclick="startGame('hard')">어려움</button>
+            <button class="btn" style="background:#2ecc71" onclick="startGame('easy')">쉬움</button>
+            <button class="btn" style="background:#3498db" onclick="startGame('normal')">보통</button>
+            <button class="btn" style="background:#e74c3c" onclick="startGame('hard')">어려움</button>
         </div>
-        <button onclick="location.reload()" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:20px;">뒤로 가기</button>
+        <button onclick="location.reload()" style="background:none; border:none; color:#aaa; cursor:pointer; margin-top:20px;">[ 처음으로 돌아가기 ]</button>
     </div>
 
     <div id="result-screen" class="overlay hidden">
-        <h1 id="res-title">TIME UP!</h1>
+        <h1 id="res-title">GAME OVER</h1>
         <h2 id="final-stats">점수: 0</h2>
-        <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="8" style="padding:10px; font-size:18px; text-align:center;">
-        <button class="btn" id="save-btn" style="background:#f1c40f; color:black; font-size:18px; padding:10px 30px;">랭킹 등록하기</button>
-        <button class="btn" onclick="location.reload()" style="background:#555; font-size:18px; padding:10px 30px;">홈으로</button>
+        <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="8" style="padding:12px; font-size:18px; text-align:center; border-radius:8px; border:none;">
+        <button class="btn" id="save-btn" style="background:#f1c40f; color:black; font-size:20px;">랭킹 등록하기</button>
+        <button class="btn" onclick="location.reload()" style="background:#555; font-size:18px;">메인 메뉴로</button>
     </div>
 
     <div id="crosshair"></div>
     <div id="game-ui">점수: <span id="score">0</span> | 시간: <span id="timer">30</span>s</div>
-    
     <canvas id="timing-canvas"></canvas>
 
     <script type="module">
@@ -80,7 +75,6 @@
         import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
-        // Firebase 설정 (사용자 정보 적용)
         const firebaseConfig = {
             apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
             authDomain: "dummy-server-ff1b9.firebaseapp.com",
@@ -92,12 +86,11 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- 공통 변수 ---
-        let currentMode = ''; // 'aim' or 'timing'
+        let currentMode = '';
         let score = 0, timeLeft = 30, gameActive = false, selectedDiff = '';
         let timerInterval;
 
-        // --- 메뉴 전환 기능 ---
+        // 메뉴 전환
         window.showSubMenu = (mode) => {
             currentMode = mode;
             document.getElementById('main-menu').classList.add('hidden');
@@ -132,12 +125,13 @@
             document.getElementById('game-ui').style.display = 'none';
             document.getElementById('crosshair').style.display = 'none';
             document.getElementById('timing-canvas').style.display = 'none';
+            if(aim_renderer) aim_renderer.domElement.style.display = 'none';
             
             document.getElementById('result-screen').classList.remove('hidden');
-            document.getElementById('final-stats').innerText = `${currentMode.toUpperCase()} (${selectedDiff}): ${score}점`;
+            document.getElementById('final-stats').innerText = `${currentMode === 'aim' ? '에임' : '타이밍'} (${selectedDiff.toUpperCase()}): ${score}점`;
         }
 
-        // --- [게임 1] 에임 연습장 로직 (기존 Three.js) ---
+        // --- 에임 게임 (Three.js) ---
         let aim_scene, aim_camera, aim_renderer, aim_targets = [], aim_targetSize = 0.7;
 
         function initAimGame(diff) {
@@ -169,16 +163,12 @@
         }
 
         function animateAim() {
-            if(!gameActive || currentMode !== 'aim') {
-                if(aim_renderer) aim_renderer.domElement.style.display = 'none';
-                return;
-            }
+            if(!gameActive || currentMode !== 'aim') return;
             requestAnimationFrame(animateAim);
             aim_targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
             aim_renderer.render(aim_scene, aim_camera);
         }
 
-        // 에임 클릭 인식
         const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
             if(!gameActive || currentMode !== 'aim') return;
@@ -192,7 +182,6 @@
             }
         });
 
-        // 에임 시점 회전
         let yaw = 0, pitch = 0;
         document.addEventListener('mousemove', (e) => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
@@ -201,7 +190,7 @@
             aim_camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // --- [게임 2] 타이밍 맞추기 로직 (Canvas) ---
+        // --- 타이밍 게임 (Canvas) ---
         const tCanvas = document.getElementById('timing-canvas');
         const tCtx = tCanvas.getContext('2d');
         let ringSize = 0, ringSpeed = 2;
@@ -210,55 +199,45 @@
             tCanvas.style.display = 'block';
             tCanvas.width = window.innerWidth;
             tCanvas.height = window.innerHeight;
-            ringSpeed = (diff === 'easy') ? 2 : (diff === 'normal' ? 4 : 7);
+            ringSpeed = (diff === 'easy') ? 2.5 : (diff === 'normal' ? 4.5 : 7.5);
             resetRing();
             animateTiming();
         }
 
-        function resetRing() { ringSize = 400; }
+        function resetRing() { ringSize = 450; }
 
         function animateTiming() {
             if(!gameActive || currentMode !== 'timing') return;
             requestAnimationFrame(animateTiming);
             tCtx.clearRect(0, 0, tCanvas.width, tCanvas.height);
-
             const centerX = tCanvas.width / 2;
             const centerY = tCanvas.height / 2;
-            const targetSize = 100;
+            const targetSize = 120;
 
-            // 1. 고정 네모 (안쪽)
-            tCtx.strokeStyle = "#00ff00";
-            tCtx.lineWidth = 3;
+            tCtx.strokeStyle = "#00ff00"; tCtx.lineWidth = 4;
             tCtx.strokeRect(centerX - targetSize/2, centerY - targetSize/2, targetSize, targetSize);
-
-            // 2. 다가오는 네모 (바깥쪽)
-            tCtx.strokeStyle = "#ffffff";
+            tCtx.strokeStyle = "#ffffff"; tCtx.lineWidth = 2;
             tCtx.strokeRect(centerX - ringSize/2, centerY - ringSize/2, ringSize, ringSize);
 
             ringSize -= ringSpeed;
-            if(ringSize < 20) resetRing(); // 너무 작아지면 실패로 간주하고 초기화
+            if(ringSize < 30) resetRing();
         }
 
         tCanvas.onclick = () => {
             if(!gameActive || currentMode !== 'timing') return;
-            const targetSize = 100;
+            const targetSize = 120;
             const gap = Math.abs(ringSize - targetSize);
-
-            if(gap < 20) { // 판정 범위
-                score += 10;
-                document.getElementById('score').innerText = score;
+            if(gap < 25) { 
+                score += 10; document.getElementById('score').innerText = score;
                 resetRing();
-            } else {
-                resetRing(); // 타이밍 놓치면 그냥 초기화
-            }
+            } else { resetRing(); }
         };
 
-        // --- 공통 랭킹 저장 ---
+        // 랭킹 저장
         document.getElementById('save-btn').onclick = async () => {
             const nick = document.getElementById('nickname').value.trim() || "익명";
             const btn = document.getElementById('save-btn');
             btn.disabled = true; btn.innerText = "저장 중...";
-            
             try {
                 await addDoc(collection(db, "rankings"), {
                     game: currentMode,
@@ -270,8 +249,7 @@
                 alert("기록이 등록되었습니다!");
                 location.reload();
             } catch (e) {
-                alert("저장 실패!");
-                btn.disabled = false;
+                alert("저장 실패!"); btn.disabled = false;
             }
         };
     </script>
