@@ -2,23 +2,23 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>MiniGame World - Beta</title>
+    <title>MiniGame World - Fixed</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; }
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            background: rgba(0,0,0,0.92); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
         .hidden { display: none !important; }
         
-        /* 랭킹 컨테이너 스타일 (기존 스타일 복구) */
-        #ranking-container { margin-top: 25px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; width: 380px; }
-        .tab-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
-        .tab-btn { background: #444; color: white; border: none; padding: 6px 15px; cursor: pointer; border-radius: 5px; font-size: 13px; }
-        .tab-btn.active { background: #f1c40f; color: black; font-weight: bold; }
+        /* 랭킹 UI */
+        #ranking-container { margin-top: 25px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 12px; width: 380px; }
+        .tab-menu { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; }
+        .tab-btn { background: #333; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 6px; font-size: 14px; transition: 0.2s; }
+        .tab-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; }
-        th, td { padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th, td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         th { color: #f1c40f; }
 
         #crosshair {
@@ -78,7 +78,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
         const firebaseConfig = {
@@ -94,10 +94,37 @@
 
         let currentMode = '', score = 0, timeLeft = 30, gameActive = false, selectedDiff = '', timerInterval;
 
-        // ESC 종료
-        document.addEventListener('pointerlockchange', () => {
-            if (!document.pointerLockElement && gameActive && currentMode === 'aim') stopGame();
-        });
+        // 랭킹 불러오기 (색인 없이 작동하도록 필터링 로직 수정)
+        window.loadRanking = async (diff) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
+            const listDiv = document.getElementById('ranking-list');
+            listDiv.innerHTML = "로딩 중...";
+
+            try {
+                // 단일OrderBy(score)만 사용하여 복합 색인 없이 데이터를 가져옴
+                const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(100));
+                const snap = await getDocs(q);
+                
+                let html = "<table><tr><th>순위</th><th>이름</th><th>점수</th></tr>";
+                let rank = 1;
+                
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    // 코드 내에서 게임 모드와 난이도 필터링
+                    const matchGame = !data.game || data.game === currentMode; // game 필드가 없거나 현재 모드와 같은 경우
+                    const matchDiff = data.diff === diff;
+                    
+                    if (matchGame && matchDiff && rank <= 5) {
+                        html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
+                    }
+                });
+
+                listDiv.innerHTML = (rank === 1) ? `${diff} 기록 없음` : html + "</table>";
+            } catch (e) {
+                console.error(e);
+                listDiv.innerHTML = "데이터 로딩 오류";
+            }
+        };
 
         window.selectGame = (mode) => {
             currentMode = mode;
@@ -107,20 +134,10 @@
             loadRanking('EASY');
         };
 
-        // 랭킹 불러오기
-        window.loadRanking = async (diff) => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
-            const listDiv = document.getElementById('ranking-list');
-            listDiv.innerHTML = "로딩 중...";
-            try {
-                const q = query(collection(db, "rankings"), where("game", "==", currentMode), where("diff", "==", diff), orderBy("score", "desc"), limit(5));
-                const snap = await getDocs(q);
-                let html = "<table><tr><th>순위</th><th>이름</th><th>점수</th></tr>";
-                let rank = 1;
-                snap.forEach(d => { html += `<tr><td>${rank++}</td><td>${d.data().name}</td><td>${d.data().score}</td></tr>`; });
-                listDiv.innerHTML = snap.empty ? "기록 없음" : html + "</table>";
-            } catch (e) { listDiv.innerHTML = "색인 생성 대기 중..."; }
-        };
+        // ESC 종료
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && gameActive && currentMode === 'aim') stopGame();
+        });
 
         window.runGame = (diff) => {
             selectedDiff = diff; score = 0; timeLeft = 30; gameActive = true;
@@ -145,7 +162,7 @@
             document.getElementById('final-stats').innerText = `최종 점수: ${score}`;
         }
 
-        // --- 에임 연습장 (표적 외형 복구) ---
+        // --- 에임 연습장 ---
         let scene, camera, renderer, targets = [], targetSize = 0.7;
         function startAimGame(diff) {
             document.getElementById('crosshair').style.display = 'block';
@@ -167,23 +184,19 @@
             for(let i=0; i<3; i++) spawn();
             animateAim();
         }
-
         function spawn() {
-            // 기존의 각진 보석 모양 복구 (Icosahedron + FlatShading)
             const geo = new THREE.IcosahedronGeometry(targetSize, 0);
             const mat = new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true });
             const m = new THREE.Mesh(geo, mat);
             m.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*16 + 2, -19.5);
             scene.add(m); targets.push(m);
         }
-
         function animateAim() {
             if(!gameActive || currentMode !== 'aim') return;
             requestAnimationFrame(animateAim);
             targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
             renderer.render(scene, camera);
         }
-
         document.addEventListener('mousedown', () => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
             const r = new THREE.Raycaster(); r.setFromCamera({x:0, y:0}, camera);
@@ -195,7 +208,6 @@
                 spawn();
             }
         });
-
         let yaw = 0, pitch = 0;
         document.addEventListener('mousemove', (e) => {
             if(!gameActive || currentMode !== 'aim' || !document.pointerLockElement) return;
@@ -229,7 +241,13 @@
             const nick = document.getElementById('nickname').value.trim() || "익명";
             document.getElementById('save-btn').disabled = true;
             try {
-                await addDoc(collection(db, "rankings"), { game: currentMode, diff: selectedDiff.toUpperCase(), name: nick, score: score, timestamp: serverTimestamp() });
+                await addDoc(collection(db, "rankings"), { 
+                    game: currentMode, 
+                    diff: selectedDiff.toUpperCase(), 
+                    name: nick, 
+                    score: Number(score), 
+                    timestamp: serverTimestamp() 
+                });
                 location.reload();
             } catch (e) { alert("저장 실패"); }
         };
