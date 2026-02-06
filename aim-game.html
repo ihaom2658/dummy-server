@@ -14,29 +14,27 @@
             position: absolute; top: 20px; left: 20px; font-size: 22px; z-index: 50;
             text-shadow: 2px 2px 4px #000; display: none;
         }
-        /* 카운트다운 전용 스타일 */
-        #countdown-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; 
-            justify-content: center; align-items: center;
-            font-size: 150px; font-weight: bold; color: #f1c40f;
-            z-index: 200; pointer-events: none;
-            text-shadow: 0 0 20px rgba(241, 196, 15, 0.5);
+        /* 게임 화면 위 카운트다운 스타일 */
+        #countdown-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 120px; font-weight: bold; color: #f1c40f;
+            z-index: 60; pointer-events: none; display: none;
+            text-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
-        .count-anim { animation: zoomInOut 0.5s ease-out; }
-        @keyframes zoomInOut {
-            0% { transform: scale(1.5); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+        .count-anim { animation: zoomEffect 0.5s ease-out; }
+        @keyframes zoomEffect {
+            0% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
     </style>
 </head>
 <body>
 
-    <div id="countdown-overlay"></div>
+    <div id="countdown-text"></div>
 
     <div id="sub-menu" class="overlay">
         <h1>🎯 AIM TRAINER</h1>
-        <p>난이도를 선택하면 30초 게임이 시작됩니다</p>
+        <p>난이도를 선택하면 카운트다운 후 시작됩니다</p>
         <div class="btn-group">
             <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">쉬움</button>
             <button class="btn" style="background:#3498db" onclick="runGame('normal')">보통</button>
@@ -70,7 +68,9 @@
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
         let score = 0, timeLeft = 30, gameActive = false, selectedDiff = '', timerInterval;
+        let isCountdownActive = false; // 카운트다운 상태 변수 추가
         let scene, camera, renderer, targets = [], targetSize = 0.7;
+        let yaw = 0, pitch = 0;
 
         window.updateRankingUI = async (diff) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
@@ -85,38 +85,42 @@
 
         window.updateRankingUI('EASY');
 
-        // --- 수정된 카운트다운 및 게임 실행 로직 ---
+        // --- 1. 난이도 클릭 시 ---
         window.runGame = (diff) => {
             selectedDiff = diff;
             document.getElementById('sub-menu').classList.add('hidden');
             
-            const countdownEl = document.getElementById('countdown-overlay');
-            countdownEl.style.display = 'flex';
+            // 엔진 초기화 (화면은 띄우지만 조작은 금지)
+            initThreeJS(diff);
+            isCountdownActive = true;
+            
+            const countdownEl = document.getElementById('countdown-text');
+            countdownEl.style.display = 'block';
             
             let count = 3;
             const startCountdown = setInterval(() => {
-                countdownEl.innerText = count > 0 ? count : "START!";
+                countdownEl.innerText = count > 0 ? count : "GO!";
                 countdownEl.classList.remove('count-anim');
-                void countdownEl.offsetWidth; // 리플로우 강제 (애니메이션 재시작용)
+                void countdownEl.offsetWidth; 
                 countdownEl.classList.add('count-anim');
 
                 if (count < 0) {
                     clearInterval(startCountdown);
                     countdownEl.style.display = 'none';
-                    startGameProcess(diff);
+                    isCountdownActive = false; // 조작 해제
+                    startActualTimer(); // 타이머 시작
                 }
                 count--;
             }, 1000);
         };
 
-        function startGameProcess(diff) {
+        // --- 2. 실제 타이머 시작 ---
+        function startActualTimer() {
             score = 0; timeLeft = 30; gameActive = true;
             document.getElementById('game-ui').style.display = 'block';
             document.getElementById('crosshair').style.display = 'block';
             document.getElementById('score').innerText = "0";
             document.getElementById('timer').innerText = "30";
-            
-            initThreeJS(diff);
             
             timerInterval = setInterval(() => {
                 timeLeft--;
@@ -125,23 +129,34 @@
             }, 1000);
         }
 
-        // ESC 종료 감지
-        document.addEventListener('pointerlockchange', () => {
-            if (!document.pointerLockElement && gameActive) stopGame();
+        // --- 3. 마우스 조작 제어 ---
+        document.addEventListener('mousemove', (e) => {
+            // 카운트다운 중이거나 게임 비활성 상태면 회전 방지
+            if (isCountdownActive || !gameActive || !document.pointerLockElement) return;
+            
+            yaw -= e.movementX * 0.0022;
+            pitch -= e.movementY * 0.0022;
+            pitch = Math.max(-1.4, Math.min(1.4, pitch));
+            camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        function stopGame() {
-            if(!gameActive) return;
-            gameActive = false;
-            clearInterval(timerInterval);
-            document.exitPointerLock?.();
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('crosshair').style.display = 'none';
-            if(renderer) renderer.domElement.style.display = 'none';
-            document.getElementById('result-screen').classList.remove('hidden');
-            document.getElementById('final-stats').innerText = `최종 점수: ${score}`;
-        }
+        document.addEventListener('mousedown', () => {
+            // 카운트다운 중에는 사격 금지
+            if (isCountdownActive || !gameActive || !document.pointerLockElement) return;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const intersects = raycaster.intersectObjects(targets);
+            if(intersects.length > 0) {
+                scene.remove(intersects[0].object);
+                targets = targets.filter(t => t !== intersects[0].object);
+                score++;
+                document.getElementById('score').innerText = score;
+                spawnTarget();
+            }
+        });
 
+        // --- 나머지 공통 엔진 로직 ---
         function initThreeJS(diff) {
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
             if(!scene) {
@@ -177,33 +192,26 @@
         }
 
         function animate() {
-            if(!gameActive) return;
+            // 애니메이션(회전)은 카운트다운 중에도 보여주기 위해 gameActive 대신 renderer 체크
+            if(!renderer || renderer.domElement.style.display === 'none') return;
             requestAnimationFrame(animate);
             targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
             renderer.render(scene, camera);
         }
 
-        document.addEventListener('mousedown', () => {
-            if(!gameActive || !document.pointerLockElement) return;
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-            const intersects = raycaster.intersectObjects(targets);
-            if(intersects.length > 0) {
-                scene.remove(intersects[0].object);
-                targets = targets.filter(t => t !== intersects[0].object);
-                score++;
-                document.getElementById('score').innerText = score;
-                spawnTarget();
-            }
-        });
+        function stopGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            document.exitPointerLock?.();
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none';
+            if(renderer) renderer.domElement.style.display = 'none';
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-stats').innerText = `최종 점수: ${score}`;
+        }
 
-        let yaw = 0, pitch = 0;
-        document.addEventListener('mousemove', (e) => {
-            if(!gameActive || !document.pointerLockElement) return;
-            yaw -= e.movementX * 0.0022;
-            pitch -= e.movementY * 0.0022;
-            pitch = Math.max(-1.4, Math.min(1.4, pitch));
-            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && gameActive) stopGame();
         });
 
         document.getElementById('save-btn').onclick = async () => {
