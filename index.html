@@ -2,15 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>3D Aim Trainer</title>
+    <title>3D FPS Training Range</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 20px; height: 20px;
+            width: 16px; height: 16px;
             border: 2px solid #00ff00; border-radius: 50%;
-            transform: translate(-50%, -50%); pointer-events: none;
-            z-index: 10;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
         }
         #ui {
             position: absolute; top: 20px; left: 20px;
@@ -20,8 +19,8 @@
         #instructions {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            color: white; text-align: center; background: rgba(0,0,0,0.7);
-            padding: 20px; border-radius: 10px; cursor: pointer; z-index: 20;
+            color: white; text-align: center; background: rgba(0,0,0,0.8);
+            padding: 30px; border-radius: 15px; cursor: pointer; z-index: 20;
         }
     </style>
 </head>
@@ -30,9 +29,10 @@
     <div id="crosshair"></div>
     <div id="ui">점수: <span id="score">0</span></div>
     <div id="instructions">
-        <h1>3D 에임 트레이너</h1>
-        <p>화면을 클릭하면 시작합니다</p>
-        <p>(마우스: 시점 전환 | 클릭: 사격 | ESC: 나가기)</p>
+        <h1>FPS 훈련장 (v2.0)</h1>
+        <p>클릭하여 시작</p>
+        <p><b>W, A, S, D:</b> 이동 | <b>마우스:</b> 시점 | <b>클릭:</b> 사격</p>
+        <p>(ESC를 누르면 마우스 커서가 나타납니다)</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -42,101 +42,159 @@
         const scoreElement = document.getElementById('score');
         const instructions = document.getElementById('instructions');
 
-        // 1. 씬 세팅 (세상 만들기)
+        // 1. 기본 설정
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111122);
-        scene.fog = new THREE.Fog(0x111122, 0, 50);
-
-        // 2. 카메라 세팅 (1인칭 시점)
+        scene.background = new THREE.Color(0x222233);
+        
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 3. 조명
-        const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+        const light = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(light);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(0, 10, 0);
+        scene.add(pointLight);
 
-        // 4. 바닥 (공간감 제공)
-        const grid = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
-        scene.add(grid);
+        // 2. 환경 만들기 (바닥과 벽)
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({ color: 0x333333 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
 
-        // 5. 시점 제어 로직 (Pointer Lock)
+        // 타겟이 나타날 앞쪽 벽
+        const targetWall = new THREE.Mesh(
+            new THREE.PlaneGeometry(60, 20),
+            new THREE.MeshStandardMaterial({ color: 0x444455 })
+        );
+        targetWall.position.set(0, 10, -25);
+        scene.add(targetWall);
+
+        // 3. 캐릭터 제어 변수
         let isLocked = false;
-        instructions.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        instructions.addEventListener('click', () => document.body.requestPointerLock());
 
         document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                isLocked = true;
-                instructions.style.display = 'none';
-            } else {
-                isLocked = false;
-                instructions.style.display = 'block';
-            }
+            isLocked = (document.pointerLockElement === document.body);
+            instructions.style.display = isLocked ? 'none' : 'block';
         });
 
-        let yaw = 0; // 좌우 회전
-        let pitch = 0; // 상하 회전
+        // 마우스 이동 (시점 전환)
+        let yaw = 0, pitch = 0;
         document.addEventListener('mousemove', (e) => {
             if (!isLocked) return;
             yaw -= e.movementX * 0.002;
             pitch -= e.movementY * 0.002;
-            pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch)); // 고개 꺾임 방지
-            
-            camera.rotation.order = "YXZ";
-            camera.rotation.set(pitch, yaw, 0);
+            pitch = Math.max(-Math.PI/2.1, Math.min(Math.PI/2.1, pitch));
+            camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // 6. 타겟 생성 함수
-        let target;
+        // 키보드 입력
+        const onKeyDown = (e) => {
+            switch (e.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyD': moveRight = true; break;
+            }
+        };
+        const onKeyUp = (e) => {
+            switch (e.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+
+        // 4. 타겟 시스템
+        let targets = [];
         function createTarget() {
-            if (target) scene.remove(target);
+            const geometry = new THREE.CircleGeometry(0.8, 32);
+            const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const circle = new THREE.Mesh(geometry, material);
             
-            const geometry = new THREE.IcosahedronGeometry(1, 0);
-            const material = new THREE.MeshPhongMaterial({ color: 0xff4757, emissive: 0xff4757, emissiveIntensity: 0.5 });
-            target = new THREE.Mesh(geometry, material);
-
-            // 카메라 앞쪽 무작위 위치에 배치
-            const distance = 15;
-            const theta = (Math.random() - 0.5) * Math.PI; // 좌우 범위
-            const phi = (Math.random() - 0.5) * Math.PI * 0.5; // 상하 범위
-
-            target.position.set(
-                distance * Math.sin(theta) * Math.cos(phi),
-                distance * Math.sin(phi) + 2,
-                -distance * Math.cos(theta) * Math.cos(phi)
+            // 앞쪽 벽면 범위 내에서 랜덤 위치
+            circle.position.set(
+                (Math.random() - 0.5) * 50,
+                Math.random() * 15 + 2,
+                -24.9 // 벽 바로 앞
             );
-            scene.add(target);
+            scene.add(circle);
+            targets.push(circle);
         }
-        createTarget();
 
-        // 7. 사격 로직 (Raycaster)
+        // 처음에 타겟 5개 생성
+        for(let i=0; i<5; i++) createTarget();
+
+        // 5. 사격 로직
         const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
             if (!isLocked) return;
-
-            // 카메라 정면 방향으로 광선 발사
             raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-            const intersects = raycaster.intersectObject(target);
+            const intersects = raycaster.intersectObjects(targets);
 
             if (intersects.length > 0) {
+                const hitTarget = intersects[0].object;
+                scene.remove(hitTarget);
+                targets = targets.filter(t => t !== hitTarget);
                 score++;
                 scoreElement.textContent = score;
-                createTarget(); // 타겟 맞추면 새로 생성
+                createTarget(); // 맞추면 새 타겟 생성
             }
         });
 
-        // 8. 애니메이션 루프
+        // 6. 업데이트 및 애니메이션 루프
+        let prevTime = performance.now();
         function animate() {
             requestAnimationFrame(animate);
-            if (target) target.rotation.y += 0.01;
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+
+            if (isLocked) {
+                // 감속 (마찰력 효과)
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+                // 카메라 방향에 따른 이동 계산
+                const camDir = new THREE.Vector3();
+                camera.getWorldDirection(camDir);
+                camDir.y = 0; // 하늘로 날아가지 않게
+                camDir.normalize();
+                
+                const camSide = new THREE.Vector3().crossVectors(camera.up, camDir).normalize();
+
+                camera.position.addScaledVector(camDir, -velocity.z * delta * 0.1);
+                camera.position.addScaledVector(camSide, velocity.x * delta * 0.1);
+                
+                // 이동 범위 제한 (바닥 밖으로 나가지 않게)
+                camera.position.x = Math.max(-45, Math.min(45, camera.position.x));
+                camera.position.z = Math.max(-20, Math.min(45, camera.position.z));
+                camera.position.y = 1.6; // 사람 눈높이
+            }
+
             renderer.render(scene, camera);
+            prevTime = time;
         }
         animate();
 
-        // 창 크기 조절 대응
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
