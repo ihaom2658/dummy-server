@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>3D Aim Trainer - Split Rankings</title>
+    <title>3D Aim Trainer - Fix Version</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; }
         #crosshair {
@@ -36,7 +36,6 @@
         h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; }
         input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-top: 20px; text-align: center; width: 250px; }
         
-        /* 랭킹 탭 스타일 */
         #ranking-container { margin-top: 30px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; width: 350px; }
         .tab-menu { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
         .tab-btn { background: #444; color: white; border: none; padding: 5px 12px; cursor: pointer; border-radius: 4px; font-size: 13px; }
@@ -57,16 +56,16 @@
         <h1>AIM TRAINER</h1>
         <p>난이도를 선택하면 30초 게임이 시작됩니다</p>
         <div class="btn-group">
-            <button class="btn btn-easy" onclick="window.startGame('easy')">쉬움</button>
-            <button class="btn btn-normal" onclick="window.startGame('normal')">보통</button>
-            <button class="btn btn-hard" onclick="window.startGame('hard')">어려움</button>
+            <button class="btn btn-easy" id="start-easy">쉬움</button>
+            <button class="btn btn-normal" id="start-normal">보통</button>
+            <button class="btn btn-hard" id="start-hard">어려움</button>
         </div>
         
         <div id="ranking-container">
             <div class="tab-menu">
-                <button class="tab-btn active" onclick="window.switchTab('EASY', this)">쉬움 랭킹</button>
-                <button class="tab-btn" onclick="window.switchTab('NORMAL', this)">보통 랭킹</button>
-                <button class="tab-btn" onclick="window.switchTab('HARD', this)">어려움 랭킹</button>
+                <button class="tab-btn active" id="tab-EASY">쉬움 랭킹</button>
+                <button class="tab-btn" id="tab-NORMAL">보통 랭킹</button>
+                <button class="tab-btn" id="tab-HARD">어려움 랭킹</button>
             </div>
             <div id="ranking-list">로딩 중...</div>
         </div>
@@ -85,6 +84,7 @@
         import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
+        // Firebase 설정 (정상 확인됨)
         const firebaseConfig = {
             apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
             authDomain: "dummy-server-ff1b9.firebaseapp.com",
@@ -99,15 +99,14 @@
         const db = getFirestore(app);
 
         // --- 랭킹 로직 ---
-        window.switchTab = async (diff, btn) => {
-            // 버튼 활성화 스타일 변경
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        async function switchTab(diff) {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('active', b.id === `tab-${diff}`);
+            });
             
             document.getElementById('ranking-list').innerHTML = "로딩 중...";
             
             try {
-                // 특정 난이도(diff)의 데이터만 필터링해서 가져옴
                 const q = query(
                     collection(db, "rankings"), 
                     where("diff", "==", diff),
@@ -122,20 +121,20 @@
                     html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
                 });
                 html += "</table>";
-                document.getElementById('ranking-list').innerHTML = querySnapshot.empty ? `${diff} 모드 기록이 없습니다!` : html;
+                document.getElementById('ranking-list').innerHTML = querySnapshot.empty ? `${diff} 기록 없음` : html;
             } catch (e) {
-                console.error(e);
-                document.getElementById('ranking-list').innerHTML = "데이터를 불러올 수 없습니다.";
+                console.error("데이터 로딩 에러:", e);
+                document.getElementById('ranking-list').innerHTML = "색인 생성 중일 수 있습니다 (F12 확인)";
             }
-        };
-
-        // 초기 화면 로딩 시 'EASY' 랭킹 먼저 보여줌
-        loadRankingDefault();
-        async function loadRankingDefault() {
-            const firstTab = document.querySelector('.tab-btn.active');
-            window.switchTab('EASY', firstTab);
         }
 
+        // 초기 랭킹 탭 설정
+        document.getElementById('tab-EASY').onclick = () => switchTab('EASY');
+        document.getElementById('tab-NORMAL').onclick = () => switchTab('NORMAL');
+        document.getElementById('tab-HARD').onclick = () => switchTab('HARD');
+        switchTab('EASY');
+
+        // --- 점수 저장 ---
         document.getElementById('save-btn').onclick = async () => {
             const nickname = document.getElementById('nickname').value.trim() || "익명";
             const saveBtn = document.getElementById('save-btn');
@@ -148,15 +147,15 @@
                     diff: currentDiff.toUpperCase(),
                     timestamp: serverTimestamp()
                 });
-                alert("랭킹에 등록되었습니다!");
+                alert("등록 성공!");
                 location.reload();
             } catch (e) {
-                alert("저장 실패!");
+                alert("저장 에러! 규칙이나 인덱스를 확인하세요.");
                 saveBtn.disabled = false;
             }
         };
 
-        // --- 게임 로직 (Three.js) ---
+        // --- 게임 엔진 (Three.js) ---
         let score = 0, timeLeft = 30, gameActive = false, currentDiff = '';
         let targetSize = 0.7, timerInterval, targets = [];
 
@@ -194,7 +193,27 @@
             scene.add(mesh); targets.push(mesh);
         }
 
-        window.startGame = (diff) => {
+        // --- 사격 로직 (수정됨) ---
+        const raycaster = new THREE.Raycaster();
+        document.addEventListener('mousedown', (e) => {
+            if (!isLocked || !gameActive) return;
+            
+            // 중앙 조준점 기준 (0, 0)
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const intersects = raycaster.intersectObjects(targets);
+            
+            if (intersects.length > 0) {
+                const hitted = intersects[0].object;
+                scene.remove(hitted);
+                targets = targets.filter(t => t !== hitted);
+                score++;
+                document.getElementById('score').innerText = score;
+                createTarget();
+            }
+        });
+
+        // --- 시작 버튼 핸들러 ---
+        const start = (diff) => {
             currentDiff = diff; score = 0; timeLeft = 30; gameActive = true;
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
             document.getElementById('menu-screen').style.display = 'none';
@@ -206,6 +225,10 @@
                 if(timeLeft <= 0) endGame();
             }, 1000);
         };
+
+        document.getElementById('start-easy').onclick = () => start('easy');
+        document.getElementById('start-normal').onclick = () => start('normal');
+        document.getElementById('start-hard').onclick = () => start('hard');
 
         function endGame() {
             gameActive = false; clearInterval(timerInterval);
