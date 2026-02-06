@@ -2,144 +2,176 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>3D Aim Trainer Classic</title>
+    <title>3D Aim Trainer - Difficulty Mode</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; }
         #crosshair {
             position: absolute; top: 50%; left: 50%;
-            width: 18px; height: 18px;
+            width: 16px; height: 16px;
             border: 2px solid #00ff00; border-radius: 50%;
             transform: translate(-50%, -50%); pointer-events: none; z-index: 10;
         }
         #ui {
             position: absolute; top: 20px; left: 20px;
-            color: white; font-size: 24px; z-index: 10;
+            color: white; font-size: 22px; z-index: 15;
             text-shadow: 2px 2px 4px #000;
         }
-        #instructions {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            color: white; text-align: center; background: rgba(0,0,0,0.8);
-            cursor: pointer; z-index: 20;
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; z-index: 30;
         }
+        .btn-group { display: flex; gap: 15px; margin-top: 20px; }
+        .btn {
+            padding: 15px 35px; font-size: 18px; cursor: pointer; font-weight: bold;
+            border: none; border-radius: 8px; transition: 0.2s; color: white;
+        }
+        .btn-easy { background: #2ecc71; }
+        .btn-normal { background: #3498db; }
+        .btn-hard { background: #e74c3c; }
+        .btn:hover { opacity: 0.8; transform: translateY(-3px); }
+        h1 { font-size: 3rem; margin-bottom: 10px; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
     <div id="crosshair"></div>
-    <div id="ui">점수: <span id="score">0</span></div>
-    <div id="instructions">
-        <h1>3D 에임 트레이너</h1>
-        <p>화면을 클릭하면 시작합니다</p>
-        <p>(마우스: 시점 전환 | 클릭: 사격 | ESC: 나가기)</p>
+    <div id="ui">
+        점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s
+    </div>
+
+    <div id="menu-screen" class="overlay">
+        <h1>AIM TRAINER</h1>
+        <p>난이도를 선택하면 30초 게임이 시작됩니다</p>
+        <div class="btn-group">
+            <button class="btn btn-easy" onclick="startGame('easy')">쉬움</button>
+            <button class="btn btn-normal" onclick="startGame('normal')">보통</button>
+            <button class="btn btn-hard" onclick="startGame('hard')">어려움</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="overlay" style="display: none;">
+        <h1>TIME UP!</h1>
+        <h2 id="final-stats">점수: 0</h2>
+        <button class="btn btn-normal" onclick="resetGame()">다시 하기</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        let score = 0;
-        const scoreElement = document.getElementById('score');
-        const instructions = document.getElementById('instructions');
-
-        // 1. 씬 및 카메라 설정
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a1a);
+        let score = 0, timeLeft = 30, gameActive = false;
+        let targetSize = 0.7, timerInterval;
         
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const menuScreen = document.getElementById('menu-screen');
+        const resultScreen = document.getElementById('result-screen');
+
+        // 1. 3D 씬 설정
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 조명 설정 (오류 수정됨)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-        scene.add(ambientLight);
-        const pointLight = new THREE.PointLight(0xffffff, 1);
-        pointLight.position.set(0, 10, 10);
-        scene.add(pointLight);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const pLight = new THREE.PointLight(0xffffff, 1);
+        pLight.position.set(0, 10, 10);
+        scene.add(pLight);
 
-        // 2. 배경 벽 (가이드라인)
-        const wallGeometry = new THREE.PlaneGeometry(30, 18);
-        const wallMaterial = new THREE.MeshBasicMaterial({ color: 0x112233, wireframe: true });
-        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+        // 가이드 벽
+        const wall = new THREE.Mesh(
+            new THREE.PlaneGeometry(35, 20),
+            new THREE.MeshBasicMaterial({ color: 0x112244, wireframe: true })
+        );
         wall.position.z = -20;
         scene.add(wall);
 
-        // 3. 포인터 락 (마우스 고정)
-        let isLocked = false;
-        instructions.addEventListener('click', () => {
-            document.body.requestPointerLock();
-        });
-
+        // 2. 컨트롤 (시점 회전)
+        let isLocked = false, yaw = 0, pitch = 0;
         document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement === document.body) {
-                isLocked = true;
-                instructions.style.display = 'none';
-            } else {
-                isLocked = false;
-                instructions.style.display = 'flex';
-            }
+            isLocked = (document.pointerLockElement === document.body);
+            if (!isLocked && gameActive) endGame(); // 게임 중 나갈 경우 종료
         });
 
-        // 4. 시점 회전 (Pitch & Yaw)
-        let yaw = 0, pitch = 0;
         document.addEventListener('mousemove', (e) => {
             if (!isLocked) return;
-            yaw -= e.movementX * 0.002;
-            pitch -= e.movementY * 0.002;
+            yaw -= e.movementX * 0.0022;
+            pitch -= e.movementY * 0.0022;
             pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, pitch));
             camera.rotation.set(pitch, yaw, 0, 'YXZ');
         });
 
-        // 5. 3D 타겟 시스템
+        // 3. 타겟 생성
         let targets = [];
         function createTarget() {
-            const geometry = new THREE.IcosahedronGeometry(0.7, 0);
-            const material = new THREE.MeshPhongMaterial({ 
-                color: 0xff4757, 
-                emissive: 0x330000,
-                flatShading: true 
-            });
+            const geometry = new THREE.IcosahedronGeometry(targetSize, 0);
+            const material = new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true });
             const mesh = new THREE.Mesh(geometry, material);
-            
-            mesh.position.set(
-                (Math.random() - 0.5) * 25,
-                (Math.random() - 0.5) * 15 + 2,
-                -19.5
-            );
+            mesh.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*16 + 2, -19.5);
             scene.add(mesh);
             targets.push(mesh);
         }
 
-        for(let i=0; i<3; i++) createTarget();
-
-        // 6. 사격 로직
+        // 4. 사격 로직
         const raycaster = new THREE.Raycaster();
         document.addEventListener('mousedown', () => {
-            if (!isLocked) return;
-            
+            if (!isLocked || !gameActive) return;
             raycaster.setFromCamera({ x: 0, y: 0 }, camera);
             const intersects = raycaster.intersectObjects(targets);
-
             if (intersects.length > 0) {
-                const hitTarget = intersects[0].object;
-                scene.remove(hitTarget);
-                targets = targets.filter(t => t !== hitTarget);
-                
+                scene.remove(intersects[0].object);
+                targets = targets.filter(t => t !== intersects[0].object);
                 score++;
                 scoreElement.textContent = score;
                 createTarget();
             }
         });
 
-        // 7. 애니메이션
+        // 5. 게임 흐름 제어
+        function startGame(diff) {
+            score = 0; timeLeft = 30; gameActive = true;
+            scoreElement.textContent = "0";
+            timerElement.textContent = "30";
+            
+            // 난이도별 크기 설정 (쉬움은 큼, 어려움은 작음)
+            if(diff === 'easy') targetSize = 1.3;
+            else if(diff === 'normal') targetSize = 0.7;
+            else targetSize = 0.3;
+
+            menuScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            document.body.requestPointerLock();
+            
+            // 초기 타겟 생성
+            targets.forEach(t => scene.remove(t));
+            targets = [];
+            for(let i=0; i<3; i++) createTarget();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = timeLeft;
+                if(timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            document.exitPointerLock();
+            resultScreen.style.display = 'flex';
+            document.getElementById('final-stats').textContent = `최종 점수: ${score}`;
+        }
+
+        function resetGame() {
+            resultScreen.style.display = 'none';
+            menuScreen.style.display = 'flex';
+        }
+
         function animate() {
             requestAnimationFrame(animate);
-            targets.forEach(t => {
-                t.rotation.x += 0.02;
-                t.rotation.y += 0.02;
-            });
+            targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
             renderer.render(scene, camera);
         }
         animate();
