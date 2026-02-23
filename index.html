@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Aim Trainer - Focus</title>
+    <title>Aim Trainer - Focus Mode</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; }
         
@@ -23,7 +23,7 @@
         #game-ui { position: absolute; top: 20px; left: 20px; font-size: 22px; z-index: 50; text-shadow: 2px 2px 4px #000; display: none; }
         #crosshair { position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; border: 2px solid #00ff00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 40; display: none; }
         
-        /* 카운트다운 */
+        /* 카운트다운 숫자 */
         #countdown-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             font-size: 120px; font-weight: bold; color: #f1c40f; z-index: 110; pointer-events: none; display: none;
@@ -50,21 +50,23 @@
     <div id="countdown-text"></div>
 
     <div id="main-menu" class="overlay">
-        <h1>🎯 AIM TRAINER</h1>
-        <p>난이도를 선택하면 3초 뒤 시작됩니다</p>
+        <h1 style="color: #f1c40f; letter-spacing: 4px;">🎯 AIM TRAINER</h1>
+        <p style="margin-bottom: 30px; color: #ccc;">난이도를 선택하면 3초 카운트다운 후 시작됩니다</p>
+        
         <div class="btn-group">
-            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">EASY (쉬움)</button>
-            <button class="btn" style="background:#3498db" onclick="runGame('normal')">NORMAL (보통)</button>
-            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">HARD (어려움)</button>
+            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">EASY</button>
+            <button class="btn" style="background:#3498db" onclick="runGame('normal')">NORMAL</button>
+            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">HARD</button>
         </div>
         
         <div id="ranking-container">
+            <div style="text-align: center; margin-bottom: 10px; font-weight: bold; color: #f1c40f;">LEADERBOARD</div>
             <div class="tab-menu">
                 <button class="tab-btn active" id="tab-EASY" onclick="loadRanking('EASY')">EASY</button>
                 <button class="tab-btn" id="tab-NORMAL" onclick="loadRanking('NORMAL')">NORMAL</button>
                 <button class="tab-btn" id="tab-HARD" onclick="loadRanking('HARD')">HARD</button>
             </div>
-            <div id="ranking-list">랭킹 로딩 중...</div>
+            <div id="ranking-list">로딩 중...</div>
         </div>
     </div>
 
@@ -73,7 +75,7 @@
 
     <div id="result-screen" class="overlay hidden">
         <h1>TIME UP!</h1>
-        <h2 id="final-stats">최종 점수: 0</h2>
+        <h2 id="final-stats" style="color: #f1c40f;">최종 점수: 0</h2>
         <input type="text" id="nickname" placeholder="닉네임 입력 (8자)" maxlength="8">
         <button class="btn" id="save-btn" style="background:#f1c40f; color:#000;">기록 등록</button>
         <button class="btn" style="background:#555;" onclick="location.reload()">다시 하기</button>
@@ -84,7 +86,7 @@
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
-        // Firebase 설정 (기존 설정 유지)
+        // Firebase 설정
         const firebaseConfig = {
             apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
             authDomain: "dummy-server-ff1b9.firebaseapp.com",
@@ -100,15 +102,15 @@
         let isCountdownActive = false, yaw = 0, pitch = 0;
         let scene, camera, renderer, targets = [], targetSize = 0.7;
 
-        // 랭킹 시스템
+        // 랭킹 조회
         window.loadRanking = async (diff) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
             const listDiv = document.getElementById('ranking-list');
-            listDiv.innerHTML = "로딩 중...";
+            listDiv.innerHTML = "데이터 로딩 중...";
             try {
-                const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(100));
+                const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(50));
                 const snap = await getDocs(q);
-                let html = "<table><tr><th>순위</th><th>이름</th><th>점수</th></tr>";
+                let html = "<table><tr><th>#</th><th>NAME</th><th>SCORE</th></tr>";
                 let rank = 1;
                 snap.forEach(doc => {
                     const data = doc.data();
@@ -116,17 +118,16 @@
                         html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
                     }
                 });
-                listDiv.innerHTML = (rank === 1) ? `${diff} 기록 없음` : html + "</table>";
+                listDiv.innerHTML = (rank === 1) ? `<div style="padding:10px;">${diff} 기록이 없습니다.</div>` : html + "</table>";
             } catch (e) { listDiv.innerHTML = "데이터 로딩 오류"; }
         };
-
         window.loadRanking('EASY');
 
-        // 게임 시작 & 카운트다운
+        // 게임 시작
         window.runGame = (diff) => {
             selectedDiff = diff;
             document.getElementById('main-menu').classList.add('hidden');
-            initThreeJS(diff); // 화면 미리 생성
+            initThreeJS(diff);
             
             isCountdownActive = true;
             const countdownEl = document.getElementById('countdown-text');
@@ -134,7 +135,7 @@
             
             let count = 3;
             const startCountdown = setInterval(() => {
-                countdownEl.innerText = count > 0 ? count : "GO!";
+                countdownEl.innerText = count > 0 ? count : "START!";
                 countdownEl.classList.remove('count-anim');
                 void countdownEl.offsetWidth; 
                 countdownEl.classList.add('count-anim');
@@ -142,7 +143,7 @@
                 if (count < 0) {
                     clearInterval(startCountdown);
                     countdownEl.style.display = 'none';
-                    isCountdownActive = false; // 조작 해제
+                    isCountdownActive = false;
                     startGameTimer();
                 }
                 count--;
@@ -160,7 +161,7 @@
             }, 1000);
         }
 
-        // 입력 제어 (카운트다운 중 무시)
+        // 조작 제어
         document.addEventListener('mousemove', (e) => {
             if (isCountdownActive || !gameActive || !document.pointerLockElement) return;
             yaw -= e.movementX * 0.0022;
@@ -183,7 +184,6 @@
             }
         });
 
-        // Three.js 로직
         function initThreeJS(diff) {
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
             if(!scene) {
@@ -231,7 +231,6 @@
 
         document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && gameActive) stopGame(); });
 
-        // 기록 저장
         document.getElementById('save-btn').onclick = async () => {
             const nick = document.getElementById('nickname').value.trim() || "익명";
             const btn = document.getElementById('save-btn');
