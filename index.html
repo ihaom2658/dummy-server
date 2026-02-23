@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Aim Trainer - Stable</title>
+    <title>Aim Trainer - Professional Ad-Ready</title>
     
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4133279395991822" crossorigin="anonymous"></script>
     
@@ -11,10 +11,12 @@
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
         .hidden { display: none !important; }
         
+        /* 광고 영역 스타일: 광고가 없을 때도 레이아웃 유지 */
         .ad-container { 
             width: 100%; max-width: 728px; min-height: 90px; 
             background: rgba(255,255,255,0.03); margin: 10px 0; 
             display: flex; justify-content: center; align-items: center; overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         .btn { padding: 12px 30px; font-size: 18px; cursor: pointer; font-weight: bold; border: none; border-radius: 8px; transition: 0.2s; color: white; margin: 5px; outline: none; }
@@ -42,11 +44,16 @@
 </head>
 <body>
     <div id="countdown-text"></div>
-    <div id="version-tag">Ver 1.1.9</div>
+    <div id="version-tag">Ver 1.2.3</div>
 
     <div id="main-menu" class="overlay">
         <div class="ad-container">
-            <ins class="adsbygoogle" style="display:block; width:728px; height:90px" data-ad-client="ca-pub-4133279395991822" data-ad-slot="auto" data-ad-format="horizontal" data-full-width-responsive="true"></ins>
+            <ins class="adsbygoogle"
+                 style="display:block; width:728px; height:90px"
+                 data-ad-client="ca-pub-4133279395991822"
+                 data-ad-slot="auto"
+                 data-ad-format="horizontal"
+                 data-full-width-responsive="true"></ins>
         </div>
 
         <h1 style="color: #f1c40f; letter-spacing: 4px; margin: 5px 0;">🎯 AIM TRAINER</h1>
@@ -78,7 +85,12 @@
         <button class="btn" style="background:#555;" onclick="location.reload()">새로고침</button>
 
         <div class="ad-container" style="margin-top: 20px;">
-            <ins class="adsbygoogle" style="display:block; width:728px; height:90px" data-ad-client="ca-pub-4133279395991822" data-ad-slot="auto" data-ad-format="horizontal" data-full-width-responsive="true"></ins>
+            <ins class="adsbygoogle"
+                 style="display:block; width:728px; height:90px"
+                 data-ad-client="ca-pub-4133279395991822"
+                 data-ad-slot="auto"
+                 data-ad-format="horizontal"
+                 data-full-width-responsive="true"></ins>
         </div>
     </div>
 
@@ -103,9 +115,9 @@
         let scene, camera, renderer, targets = [], targetSize = 0.7;
         let yaw = 0, pitch = 0, diffName = 'NORMAL';
 
-        // 광고 초기화
-        try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
-        try { (adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+        // 광고 초기화 루프
+        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
 
         window.loadRanking = async (diff) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
@@ -148,10 +160,7 @@
             document.getElementById('main-menu').classList.add('hidden');
             
             initEngine();
-            // 브라우저 보안 정책상 사용자 클릭 직후 잠금을 요청해야 함
-            const body = document.body;
-            if (body.requestPointerLock) body.requestPointerLock();
-            
+            if (document.body.requestPointerLock) document.body.requestPointerLock();
             startCountdownLoop();
         };
 
@@ -162,16 +171,13 @@
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
-            
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
             const pl = new THREE.PointLight(0xffffff, 1);
             pl.position.set(0, 10, 10);
             scene.add(pl);
-            
             const wall = new THREE.Mesh(new THREE.PlaneGeometry(50, 30), new THREE.MeshStandardMaterial({ color: 0x222222 }));
             wall.position.z = -20;
             scene.add(wall);
-
             targets = [];
             for(let i=0; i<3; i++) spawnTarget();
             animate();
@@ -182,21 +188,12 @@
             const el = document.getElementById('countdown-text');
             el.style.display = 'block';
             let count = 3; el.innerText = count;
-
             countdownInterval = setInterval(() => {
-                if (!document.pointerLockElement && (isCountdown || gameActive)) {
-                    stopGame(false);
-                    return;
-                }
+                if (!document.pointerLockElement) { cleanup(); document.getElementById('main-menu').classList.remove('hidden'); return; }
                 count--;
                 if (count > 0) el.innerText = count;
                 else if (count === 0) el.innerText = "GO!";
-                else { 
-                    clearInterval(countdownInterval); 
-                    el.style.display = 'none'; 
-                    isCountdown = false; 
-                    startGame(); 
-                }
+                else { clearInterval(countdownInterval); el.style.display = 'none'; isCountdown = false; startGame(); }
                 el.classList.remove('count-anim'); void el.offsetWidth; el.classList.add('count-anim');
             }, 1000);
         }
