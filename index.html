@@ -2,11 +2,11 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Aim Trainer - Single Page</title>
+    <title>Aim Trainer - Focus</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; }
         
-        /* 공통 레이아웃 */
+        /* 레이아웃 */
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.92); display: flex; flex-direction: column;
@@ -16,7 +16,7 @@
 
         /* 버튼 및 입력창 */
         .btn { padding: 12px 30px; font-size: 18px; cursor: pointer; font-weight: bold; border: none; border-radius: 8px; transition: 0.2s; color: white; margin: 5px; }
-        .btn:hover { transform: scale(1.05); }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
         input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-bottom: 15px; text-align: center; color: #000; width: 250px; }
 
         /* 게임 UI */
@@ -26,7 +26,8 @@
         /* 카운트다운 */
         #countdown-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 120px; font-weight: bold; color: #f1c40f; z-index: 60; pointer-events: none; display: none;
+            font-size: 120px; font-weight: bold; color: #f1c40f; z-index: 110; pointer-events: none; display: none;
+            text-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
         .count-anim { animation: zoomEffect 0.5s ease-out; }
         @keyframes zoomEffect {
@@ -34,7 +35,7 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
-        /* 랭킹 테이블 */
+        /* 랭킹 UI */
         #ranking-container { margin-top: 25px; background: rgba(255,255,255,0.08); padding: 15px; border-radius: 12px; width: 380px; }
         .tab-menu { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; }
         .tab-btn { background: #333; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 6px; font-size: 14px; }
@@ -50,11 +51,11 @@
 
     <div id="main-menu" class="overlay">
         <h1>🎯 AIM TRAINER</h1>
-        <p>난이도를 선택하면 카운트다운 후 시작됩니다</p>
+        <p>난이도를 선택하면 3초 뒤 시작됩니다</p>
         <div class="btn-group">
-            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">쉬움</button>
-            <button class="btn" style="background:#3498db" onclick="runGame('normal')">보통</button>
-            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">어려움</button>
+            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">EASY (쉬움)</button>
+            <button class="btn" style="background:#3498db" onclick="runGame('normal')">NORMAL (보통)</button>
+            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">HARD (어려움)</button>
         </div>
         
         <div id="ranking-container">
@@ -83,7 +84,7 @@
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
-        // Firebase 설정
+        // Firebase 설정 (기존 설정 유지)
         const firebaseConfig = {
             apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
             authDomain: "dummy-server-ff1b9.firebaseapp.com",
@@ -99,7 +100,7 @@
         let isCountdownActive = false, yaw = 0, pitch = 0;
         let scene, camera, renderer, targets = [], targetSize = 0.7;
 
-        // 랭킹 불러오기
+        // 랭킹 시스템
         window.loadRanking = async (diff) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
             const listDiv = document.getElementById('ranking-list');
@@ -121,11 +122,11 @@
 
         window.loadRanking('EASY');
 
-        // 게임 시작 절차
+        // 게임 시작 & 카운트다운
         window.runGame = (diff) => {
             selectedDiff = diff;
             document.getElementById('main-menu').classList.add('hidden');
-            initThreeJS(diff);
+            initThreeJS(diff); // 화면 미리 생성
             
             isCountdownActive = true;
             const countdownEl = document.getElementById('countdown-text');
@@ -141,7 +142,7 @@
                 if (count < 0) {
                     clearInterval(startCountdown);
                     countdownEl.style.display = 'none';
-                    isCountdownActive = false;
+                    isCountdownActive = false; // 조작 해제
                     startGameTimer();
                 }
                 count--;
@@ -159,7 +160,7 @@
             }, 1000);
         }
 
-        // 조작 제어
+        // 입력 제어 (카운트다운 중 무시)
         document.addEventListener('mousemove', (e) => {
             if (isCountdownActive || !gameActive || !document.pointerLockElement) return;
             yaw -= e.movementX * 0.0022;
@@ -182,7 +183,7 @@
             }
         });
 
-        // Three.js 엔진
+        // Three.js 로직
         function initThreeJS(diff) {
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
             if(!scene) {
