@@ -27,7 +27,7 @@
 </head>
 <body>
     <div id="countdown-text"></div>
-    <div id="version-tag">Ver 1.1.4</div>
+    <div id="version-tag">Ver 1.1.5</div>
 
     <div id="main-menu" class="overlay">
         <h1 style="color: #f1c40f; letter-spacing: 4px;">🎯 AIM TRAINER</h1>
@@ -96,12 +96,34 @@
         };
         window.loadRanking('EASY');
 
+        // 강력한 엔진 청소기
+        function cleanup() {
+            gameActive = false;
+            isCountdown = false;
+            clearInterval(timerInterval);
+            clearInterval(countdownInterval);
+            cancelAnimationFrame(animId);
+            
+            if (renderer) {
+                if (renderer.domElement && renderer.domElement.parentNode) {
+                    renderer.domElement.parentNode.removeChild(renderer.domElement);
+                }
+                renderer.dispose();
+                renderer = null;
+            }
+            scene = null; camera = null; targets = []; yaw = 0; pitch = 0;
+            
+            document.getElementById('countdown-text').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('crosshair').style.display = 'none';
+        }
+
         window.runGame = (diff) => {
+            cleanup(); // 실행 전 혹시 모를 잔재 제거
             diffName = diff.toUpperCase();
             targetSize = (diff === 'easy') ? 1.3 : (diff === 'normal' ? 0.7 : 0.3);
             document.getElementById('main-menu').classList.add('hidden');
             
-            cleanup(); // 시작 전 완전 청소
             initEngine();
             startCountdownLoop();
         };
@@ -137,6 +159,10 @@
             el.innerText = count;
 
             countdownInterval = setInterval(() => {
+                if (!isCountdown) { // ESC로 이미 취소된 경우 즉시 중단
+                    clearInterval(countdownInterval);
+                    return;
+                }
                 count--;
                 if (count > 0) {
                     el.innerText = count;
@@ -155,6 +181,7 @@
         }
 
         function startGame() {
+            if (!document.pointerLockElement) return; // 카운트다운 끝났는데 잠금 풀려있으면 시작 안함
             gameActive = true;
             score = 0; timeLeft = 30;
             document.getElementById('game-ui').style.display = 'block';
@@ -163,33 +190,18 @@
             document.getElementById('timer').innerText = "30";
             
             timerInterval = setInterval(() => {
+                if (!gameActive) {
+                    clearInterval(timerInterval);
+                    return;
+                }
                 timeLeft--;
                 document.getElementById('timer').innerText = timeLeft;
                 if (timeLeft <= 0) stopGame(true, "TIME UP!");
             }, 1000);
         }
 
-        function cleanup() {
-            clearInterval(timerInterval);
-            clearInterval(countdownInterval);
-            cancelAnimationFrame(animId);
-            
-            if (renderer) {
-                renderer.domElement.remove();
-                renderer.dispose();
-                renderer = null;
-            }
-            scene = null; camera = null; targets = []; yaw = 0; pitch = 0;
-            
-            document.getElementById('countdown-text').style.display = 'none';
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('crosshair').style.display = 'none';
-        }
-
         function stopGame(showResult = false, title = "STOPPED") {
-            const finalScore = score; // 점수 보존
-            gameActive = false;
-            isCountdown = false;
+            const finalScore = score;
             cleanup();
             document.exitPointerLock?.();
             
@@ -202,13 +214,12 @@
             }
         }
 
-        // ESC 등 화면잠금 해제 시 처리
         document.addEventListener('pointerlockchange', () => {
             if (!document.pointerLockElement) {
                 if (gameActive) {
-                    stopGame(true, "GAVE UP"); // 게임 중 ESC는 기록 저장 화면으로
+                    stopGame(true, "GAVE UP");
                 } else if (isCountdown) {
-                    stopGame(false); // 카운트다운 중 ESC는 그냥 메뉴로
+                    stopGame(false); // 카운트다운 중이면 그냥 메뉴로 백
                 }
             }
         });
@@ -246,7 +257,7 @@
         }
 
         function animate() {
-            if(!renderer) return;
+            if(!renderer || !scene || !camera) return;
             animId = requestAnimationFrame(animate);
             targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
             renderer.render(scene, camera);
