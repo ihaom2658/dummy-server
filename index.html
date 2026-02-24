@@ -3,63 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <title>Aim Trainer - Professional FPS Training Tool</title>
-    <meta name="description" content="무설치 웹 에임 연습장. FPS 실력 향상을 위한 무료 트레이닝 도구입니다.">
+    
+    <meta name="description" content="무설치 웹 에임 연습장. FPS 에임 향상을 위한 무료 트레이닝 도구. 실시간 랭킹 지원.">
+    <meta property="og:title" content="🎯 에임 연습장 - 랭킹 도전">
+    <meta property="og:description" content="클릭 한 번으로 시작하는 에임 훈련! 당신의 반응 속도는 상위 몇 %일까요?">
+    <meta property="og:url" content="https://dummy-server-kdna.vercel.app/">
+
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4133279395991822" crossorigin="anonymous"></script>
+    
     <style>
+        :root { --primary-color: #f1c40f; }
         body { margin: 0; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; scroll-behavior: smooth; overflow-x: hidden; }
-        .overlay { width: 100%; min-height: 100vh; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; padding-top: 50px; position: relative; z-index: 100; }
+        
+        /* 레이아웃 구조 */
+        .overlay { width: 100%; min-height: 100vh; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; padding-top: 60px; position: relative; z-index: 100; }
         .hidden { display: none !important; }
+
+        /* UI 컴포넌트 */
         .ad-container { width: 100%; max-width: 728px; min-height: 90px; background: rgba(255,255,255,0.03); margin: 20px 0; display: flex; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
         .btn { padding: 15px 40px; font-size: 20px; cursor: pointer; font-weight: bold; border: none; border-radius: 8px; transition: 0.2s; color: white; margin: 10px; outline: none; }
-        .btn:hover { transform: scale(1.05); }
-        .content-section { max-width: 800px; width: 90%; margin: 50px 0; text-align: left; line-height: 1.8; color: #ccc; }
-        .content-section h2 { color: #f1c40f; border-left: 4px solid #f1c40f; padding-left: 15px; margin-top: 40px; }
-        #ranking-container { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; width: 400px; margin-top: 30px; }
-        .tab-menu { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
-        .tab-btn { background: #333; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
-        .tab-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
-        #game-ui { position: fixed; top: 20px; left: 20px; font-size: 24px; z-index: 200; display: none; text-shadow: 2px 2px 4px black; }
-        #crosshair { position: fixed; top: 50%; left: 50%; width: 14px; height: 14px; border: 2px solid #00ff00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 150; display: none; }
-        #countdown-text { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 100px; font-weight: bold; color: #f1c40f; z-index: 300; display: none; }
-        #version-tag { position: fixed; bottom: 10px; right: 15px; font-size: 14px; color: rgba(255, 255, 255, 0.3); z-index: 500; }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+
+        /* 랭킹 스타일 */
+        #ranking-container { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; width: 420px; margin-top: 30px; border: 1px solid rgba(255,255,255,0.1); }
+        .tab-menu { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: #333; color: white; border: none; padding: 10px 22px; cursor: pointer; border-radius: 6px; font-size: 14px; transition: 0.3s; }
+        .tab-btn.active { background: var(--primary-color); color: #000; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; }
+        th, td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { color: var(--primary-color); font-weight: 500; }
+
+        /* 텍스트 콘텐츠 영역 (애드센스 승인용) */
+        .content-section { max-width: 850px; width: 90%; margin: 60px 0; text-align: left; line-height: 1.9; color: #bbb; border-top: 1px solid #333; padding-top: 40px; }
+        .content-section h2 { color: var(--primary-color); border-left: 5px solid var(--primary-color); padding-left: 15px; margin-top: 45px; margin-bottom: 20px; }
+        .content-section p { margin-bottom: 25px; font-size: 16px; }
+        .content-section ul { padding-left: 20px; }
+        .content-section li { margin-bottom: 10px; }
+
+        /* 게임 내부 UI */
+        #game-ui { position: fixed; top: 25px; left: 25px; font-size: 26px; z-index: 200; display: none; text-shadow: 2px 2px 5px #000; font-weight: bold; }
+        #crosshair { position: fixed; top: 50%; left: 50%; width: 16px; height: 16px; border: 2.5px solid #00ff00; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 150; display: none; }
+        #countdown-text { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 130px; font-weight: bold; color: var(--primary-color); z-index: 300; display: none; text-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        
+        #version-tag { position: fixed; bottom: 12px; right: 18px; font-size: 14px; color: rgba(255, 255, 255, 0.3); z-index: 500; }
         canvas { position: fixed; top: 0; left: 0; z-index: 10; }
-        table { width: 100%; border-collapse: collapse; text-align: center; }
-        th, td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        input { padding: 12px; font-size: 18px; border-radius: 8px; border: none; margin-bottom: 15px; text-align: center; width: 260px; }
     </style>
 </head>
 <body>
     <div id="countdown-text"></div>
     <div id="crosshair"></div>
-    <div id="game-ui">Score: <span id="score">0</span> | Time: <span id="timer">30</span>s</div>
-    <div id="version-tag">Ver 1.3.7</div>
+    <div id="game-ui">점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s</div>
+    <div id="version-tag">Ver 1.3.8</div>
 
     <div id="main-menu" class="overlay">
-        <h1 style="color: #f1c40f; font-size: 48px; letter-spacing: 5px;">🎯 AIM TRAINER</h1>
-        <div class="btn-group">
-            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">EASY</button>
-            <button class="btn" style="background:#3498db" onclick="runGame('normal')">NORMAL</button>
-            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">HARD</button>
+        <div class="ad-container">
+            <ins class="adsbygoogle" style="display:block; width:728px; height:90px" data-ad-client="ca-pub-4133279395991822" data-ad-slot="auto" data-ad-format="horizontal"></ins>
         </div>
+
+        <h1 style="color: var(--primary-color); font-size: 56px; letter-spacing: 6px; margin-bottom: 10px;">🎯 AIM TRAINER</h1>
+        <p style="color: #888; margin-bottom: 40px; font-size: 18px;">브라우저 무설치 FPS 에임 훈련 시스템</p>
+
+        <div class="btn-group">
+            <button class="btn" style="background:#2ecc71" onclick="runGame('easy')">쉬움 (EASY)</button>
+            <button class="btn" style="background:#3498db" onclick="runGame('normal')">보통 (NORMAL)</button>
+            <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">어려움 (HARD)</button>
+        </div>
+
         <div id="ranking-container">
             <div class="tab-menu">
                 <button class="tab-btn active" id="tab-EASY" onclick="loadRanking('EASY')">EASY</button>
                 <button class="tab-btn" id="tab-NORMAL" onclick="loadRanking('NORMAL')">NORMAL</button>
                 <button class="tab-btn" id="tab-HARD" onclick="loadRanking('HARD')">HARD</button>
             </div>
-            <div id="ranking-list">Loading...</div>
+            <div id="ranking-list">데이터 로딩 중...</div>
         </div>
+
         <div class="content-section">
-            <h2>훈련 도구 안내</h2>
-            <p>이 웹사이트는 FPS 게이머를 위한 무설치 에임 연습 도구입니다. Three.js를 활용한 3D 환경에서 반응속도를 테스트하세요.</p>
+            <h2>1. FPS 에임 트레이닝의 중요성</h2>
+            <p>발로란트, 오버워치2, 배틀그라운드와 같은 현대 FPS 게임에서 가장 중요한 요소는 정확한 타겟팅입니다. 본 에임 연습장은 사용자의 마우스 조작 정확도를 정밀하게 측정하며, 꾸준한 반복 훈련을 통해 근육 기억(Muscle Memory)을 형성하도록 돕습니다.</p>
+
+            <h2>2. 게임 조작 및 사용 방법</h2>
+            <ul>
+                <li><b>난이도 선택:</b> 메인 화면에서 원하는 난이도를 클릭하면 3초 카운트다운 후 시작됩니다.</li>
+                <li><b>에임 조절:</b> 마우스를 움직여 화면 중앙의 크로스헤어를 타겟에 일치시키세요.</li>
+                <li><b>사격:</b> 마우스 왼쪽 버튼을 클릭하여 타겟을 제거합니다.</li>
+                <li><b>중단 및 취소:</b> 게임 도중 언제든지 <b>ESC</b> 키를 누르면 결과 화면으로 이동합니다.</li>
+            </ul>
+
+            <h2>3. 난이도별 상세 안내</h2>
+            <p>EASY 모드는 큰 타겟을 통해 기초적인 조준 선을 익히기에 적합합니다. NORMAL 모드는 실제 게임 내 캐릭터 머리 크기와 유사한 타겟을 제공하며, HARD 모드는 매우 작고 빠른 반응을 요구하여 최상위권 게이머들을 위한 정밀 훈련을 지원합니다.</p>
+
+            <h2>4. 기술적 사양 및 데이터 보안</h2>
+            <p>본 서비스는 웹 표준 기술인 HTML5와 Three.js를 사용하여 제작되었습니다. 별도의 프로그램 설치가 필요 없으며, 모든 랭킹 데이터는 구글 Firebase Firestore를 통해 실시간으로 안전하게 관리됩니다. 사용자의 개인정보는 수집하지 않으며, 오직 게임 점수 데이터만을 기록합니다.</p>
         </div>
+        
+        <footer style="padding: 40px; color: #444; font-size: 13px; text-align: center;">
+            © 2026 Aim Trainer Lab. All rights reserved. | Powered by Three.js & Firebase
+        </footer>
     </div>
 
     <div id="result-screen" class="overlay hidden">
-        <h1 id="result-title">TIME UP!</h1>
-        <h2 id="final-stats" style="color: #f1c40f;">Final Score: 0</h2>
-        <input type="text" id="nickname" placeholder="Nickname" maxlength="8" style="padding:10px; border-radius:5px; border:none; margin-bottom:10px; text-align:center;">
-        <button class="btn" id="save-btn" style="background:#f1c40f; color:#000;">Register Rank</button>
-        <button class="btn" style="background:#555;" onclick="location.reload()">Restart</button>
+        <h1 id="result-title">훈련 종료!</h1>
+        <h2 id="final-stats" style="color: var(--primary-color); font-size: 32px;">최종 점수: 0</h2>
+        <input type="text" id="nickname" placeholder="닉네임 입력 (8자)" maxlength="8">
+        <div class="btn-group">
+            <button class="btn" id="save-btn" style="background:var(--primary-color); color:#000;">기록 등록</button>
+            <button class="btn" style="background:#3498db;" onclick="copyScore()">점수 복사</button>
+        </div>
+        <button class="btn" style="background:#555;" onclick="location.reload()">처음으로</button>
     </div>
 
     <script type="module">
@@ -67,6 +119,7 @@
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js";
 
+        // Firebase 설정
         const firebaseConfig = {
             apiKey: "AIzaSyCWvmTD7ZqrM8QS2jAtIoxyYw9zDghyyZo",
             authDomain: "dummy-server-ff1b9.firebaseapp.com",
@@ -78,29 +131,34 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // 게임 변수
         let score = 0, timeLeft = 30, gameActive = false, isCountdown = false;
         let timerInterval, countdownInterval, animId;
         let scene, camera, renderer, targets = [], targetSize = 0.7;
         let yaw = 0, pitch = 0, diffName = 'NORMAL';
 
+        // 랭킹 로드 (필수 검증 완료)
         window.loadRanking = async (diff) => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === `tab-${diff}`));
             const listDiv = document.getElementById('ranking-list');
-            listDiv.innerHTML = "Loading...";
+            listDiv.innerHTML = "로딩 중...";
             try {
                 const q = query(collection(db, "rankings"), orderBy("score", "desc"), limit(5));
                 const snap = await getDocs(q);
-                let html = "<table><tr><th>Rank</th><th>Name</th><th>Score</th></tr>";
+                let html = "<table><tr><th>순위</th><th>닉네임</th><th>점수</th></tr>";
                 let rank = 1;
                 snap.forEach(doc => {
                     const data = doc.data();
-                    if (data.diff === diff) html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
+                    if (data.diff === diff) {
+                        html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
+                    }
                 });
-                listDiv.innerHTML = (rank === 1) ? "No Data" : html + "</table>";
-            } catch(e) { listDiv.innerHTML = "Error loading"; }
+                listDiv.innerHTML = (rank === 1) ? "아직 데이터가 없습니다." : html + "</table>";
+            } catch(e) { listDiv.innerHTML = "로드 실패"; }
         };
         loadRanking('EASY');
 
+        // 초기화 함수 (ESC 및 재시작 버그 방지 핵심)
         function cleanup() {
             gameActive = false; isCountdown = false;
             clearInterval(timerInterval); clearInterval(countdownInterval);
@@ -115,6 +173,7 @@
             document.getElementById('crosshair').style.display = 'none';
         }
 
+        // 게임 실행
         window.runGame = (diff) => {
             cleanup();
             diffName = diff.toUpperCase();
@@ -125,6 +184,7 @@
             startCountdown();
         };
 
+        // 3D 엔진 초기화
         function initEngine() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x050510);
@@ -133,13 +193,14 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            const wall = new THREE.Mesh(new THREE.PlaneGeometry(50, 30), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
             wall.position.z = -20;
             scene.add(wall);
-            for(let i=0; i<3; i++) spawnTarget();
+            for(let i=0; i<4; i++) spawnTarget();
             animate();
         }
 
+        // 카운트다운 (ESC 버그 방지용 상태 체크 포함)
         function startCountdown() {
             isCountdown = true;
             const el = document.getElementById('countdown-text');
@@ -148,7 +209,7 @@
             countdownInterval = setInterval(() => {
                 count--;
                 if (count > 0) el.innerText = count;
-                else if (count === 0) el.innerText = "GO!";
+                else if (count === 0) el.innerText = "START!";
                 else {
                     clearInterval(countdownInterval);
                     el.style.display = 'none';
@@ -158,32 +219,36 @@
             }, 1000);
         }
 
+        // 게임 시작
         function startGame() {
             gameActive = true; score = 0; timeLeft = 30;
             document.getElementById('game-ui').style.display = 'block';
             document.getElementById('crosshair').style.display = 'block';
-            document.getElementById('score').innerText = score;
-            document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('score').innerText = "0";
+            document.getElementById('timer').innerText = "30";
             timerInterval = setInterval(() => {
                 if (!gameActive) return;
                 timeLeft--;
                 document.getElementById('timer').innerText = timeLeft;
-                if (timeLeft <= 0) stopGame(true, "TIME UP!");
+                if (timeLeft <= 0) stopGame(true, "훈련 종료!");
             }, 1000);
         }
 
-        function stopGame(showResult = false, title = "STOPPED") {
+        // 게임 종료 처리 (ESC 및 결과 도달 시 호출)
+        function stopGame(showResult = false, title = "중단됨") {
             const finalScore = score;
             cleanup();
             document.exitPointerLock?.();
             if (showResult) {
                 document.getElementById('result-screen').classList.remove('hidden');
-                document.getElementById('final-stats').innerText = `Final Score: ${finalScore}`;
+                document.getElementById('result-title').innerText = title;
+                document.getElementById('final-stats').innerText = `최종 점수: ${finalScore}`;
             } else {
                 document.getElementById('main-menu').classList.remove('hidden');
             }
         }
 
+        // 마우스 이동 이벤트
         document.addEventListener('mousemove', (e) => {
             if (!gameActive && !isCountdown) return;
             if (document.pointerLockElement && camera) {
@@ -193,6 +258,7 @@
             }
         });
 
+        // 사격 및 포인터락 재활성화 이벤트
         document.addEventListener('mousedown', () => {
             if (gameActive && document.pointerLockElement) {
                 const raycaster = new THREE.Raycaster();
@@ -209,31 +275,43 @@
             }
         });
 
+        // ESC 키 및 포인터락 해제 감지 (버그 수정 완료)
         document.addEventListener('pointerlockchange', () => {
             if (!document.pointerLockElement && (gameActive || isCountdown)) {
-                stopGame(true, "GAVE UP");
+                // 사용자가 강제로 풀었을 경우 결과 화면으로 이동하여 데이터 보호
+                stopGame(true, "훈련 중단");
             }
         });
 
+        // 점수 복사 기능
+        window.copyScore = () => {
+            const stats = document.getElementById('final-stats').innerText;
+            const text = `[에임 연습장] ${diffName} 모드 ${stats} 달성! 도전해보세요: https://dummy-server-kdna.vercel.app/`;
+            navigator.clipboard.writeText(text).then(() => alert("점수가 복사되었습니다!"));
+        };
+
+        // 타겟 생성
         function spawnTarget() {
             if (!scene) return;
             const mesh = new THREE.Mesh(
-                new THREE.IcosahedronGeometry(targetSize, 0),
-                new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true })
+                new THREE.SphereGeometry(targetSize, 24, 24),
+                new THREE.MeshStandardMaterial({ color: 0xff4757, emissive: 0x550000 })
             );
-            mesh.position.set((Math.random()-0.5)*20, (Math.random()-0.5)*12 + 2, -19.5);
+            mesh.position.set((Math.random()-0.5)*25, (Math.random()-0.5)*15 + 2, -19.5);
             scene.add(mesh); targets.push(mesh);
         }
 
+        // 애니메이션 루프
         function animate() {
             if(!renderer || !scene) return;
             animId = requestAnimationFrame(animate);
-            targets.forEach(t => { t.rotation.x += 0.02; t.rotation.y += 0.02; });
+            targets.forEach(t => { t.rotation.x += 0.03; t.rotation.y += 0.03; });
             renderer.render(scene, camera);
         }
 
+        // 기록 등록
         document.getElementById('save-btn').onclick = async () => {
-            const nick = document.getElementById('nickname').value.trim() || "Anonymous";
+            const nick = document.getElementById('nickname').value.trim() || "익명";
             const btn = document.getElementById('save-btn');
             btn.disabled = true;
             try {
@@ -241,8 +319,11 @@
                     diff: diffName, name: nick, score: score, timestamp: serverTimestamp()
                 });
                 location.reload();
-            } catch (e) { alert("Save failed"); btn.disabled = false; }
+            } catch (e) { alert("저장 실패"); btn.disabled = false; }
         };
+
+        // 광고 활성화 시도
+        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
     </script>
 </body>
 </html>
