@@ -20,7 +20,7 @@
         th, td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         th { color: var(--primary-color); }
         
-        /* 텍스트 콘텐츠 영역 확장 (Ver 1.4.0) */
+        /* 텍스트 콘텐츠 영역 확장 */
         .content-section { max-width: 850px; width: 90%; margin: 60px 0; text-align: left; line-height: 2.0; color: #ccc; border-top: 1px solid #333; padding-top: 40px; }
         .content-section h2 { color: var(--primary-color); border-left: 5px solid var(--primary-color); padding-left: 15px; margin: 50px 0 25px; font-size: 28px; }
         .content-section h3 { color: #eee; margin-top: 30px; font-size: 20px; }
@@ -37,7 +37,7 @@
     <div id="countdown-text"></div>
     <div id="crosshair"></div>
     <div id="game-ui">점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s</div>
-    <div id="version-tag">Ver 1.4.0</div>
+    <div id="version-tag">Ver 1.5.0</div>
 
     <div id="main-menu" class="overlay">
         <h1 style="color: var(--primary-color); font-size: 56px; letter-spacing: 6px; margin-bottom: 10px;">🎯 AIM TRAINER</h1>
@@ -46,6 +46,9 @@
             <button class="btn" style="background:#3498db" onclick="runGame('normal')">NORMAL</button>
             <button class="btn" style="background:#e74c3c" onclick="runGame('hard')">HARD</button>
         </div>
+        
+        <button class="btn" style="background:transparent; border: 2px solid #555; font-size: 16px; margin-top: 10px;" onclick="location.href='https://game-hub-steel-eight.vercel.app/'">← GAME HUB 돌아가기</button>
+
         <div id="ranking-container">
             <div class="tab-menu">
                 <button class="tab-btn active" id="tab-EASY" onclick="loadRanking('EASY')">EASY</button>
@@ -58,18 +61,14 @@
         <div class="content-section">
             <h2>에임 트레이닝 마스터 가이드</h2>
             <p>FPS 게임의 정점은 결국 0.1초의 찰나에 결정됩니다. 본 연습장은 단순한 게임이 아닌, 게이머의 신경계를 자극하여 반응 속도와 정밀도를 극대화하기 위해 설계된 전문 트레이닝 플랫폼입니다.</p>
-            
             <h3>1. 플릭샷(Flick Shot)과 트래킹(Tracking)</h3>
-            <p>대부분의 FPS 게임에서는 갑자기 나타난 적을 빠르게 조준하는 '플릭샷'과 움직이는 적을 따라가는 '트래킹' 능력이 요구됩니다. 본 서비스의 NORMAL 모드는 표준적인 플릭 훈련을, HARD 모드는 고도의 정밀도를 요구하는 트래킹 기초 능력을 배양합니다. 타겟이 생성되는 위치는 무작위이며, 이는 사용자의 예측 불가능한 반응 속도를 실전과 유사하게 테스트합니다.</p>
-            
+            <p>대부분의 FPS 게임에서는 갑자기 나타난 적을 빠르게 조준하는 '플릭샷'과 움직이는 적을 따라가는 '트래킹' 능력이 요구됩니다. 본 서비스의 NORMAL 모드는 표준적인 플릭 훈련을, HARD 모드는 고도의 정밀도를 요구하는 트래킹 기초 능력을 배양합니다.</p>
             <h3>2. 감도(Sensitivity) 설정의 중요성</h3>
-            <p>자신에게 맞는 최적의 감도를 찾는 것은 에임의 시작입니다. 본 브라우저 기반 연습장은 Pointer Lock API를 통해 마우스 가속도를 배제한 원시 입력을 처리하므로, 사용자가 윈도우 설정이나 게임 내 설정과 유사한 환경에서 연습할 수 있도록 돕습니다. 연습 도중 타겟이 너무 멀거나 가깝게 느껴진다면 마우스 DPI 설정을 조정하며 최적의 값을 찾아보세요.</p>
-
+            <p>자신에게 맞는 최적의 감도를 찾는 것은 에임의 시작입니다. 본 연습장은 Pointer Lock API를 통해 마우스 가속도를 배제한 원시 입력을 처리합니다.</p>
             <h3>3. 효과적인 훈련 루틴</h3>
-            <p>뇌와 근육이 새로운 패턴을 기억하는 데는 반복이 필요합니다. 하루 10분, 세 번의 세션을 추천합니다. 첫 세션에서는 EASY 모드로 근육을 예열하고, 두 번째 세션에서 NORMAL 모드로 정확도를 95% 이상 유지하는 연습을 하세요. 마지막 세션에서 HARD 모드에 도전하여 한계를 돌파하는 것이 실력 향상의 지름길입니다.</p>
-
+            <p>하루 10분, 세 번의 세션을 추천합니다. EASY로 예열하고 NORMAL로 정확도를, HARD로 한계를 돌파하세요.</p>
             <h3>4. 랭킹 시스템을 통한 성취감 고취</h3>
-            <p>혼자만의 연습은 지루할 수 있습니다. Firebase 기반의 실시간 랭킹 시스템은 전 세계 유저들과의 상대적 위치를 실시간으로 확인시켜 줍니다. 자신의 닉네임을 상단에 박제하는 과정은 강력한 동기부여가 되며, 이는 실제 랭크 게임에서의 멘탈 관리에도 긍정적인 영향을 미칩니다.</p>
+            <p>Firebase 기반의 실시간 랭킹 시스템은 전 세계 유저들과의 상대적 위치를 실시간으로 확인시켜 줍니다.</p>
         </div>
     </div>
 
@@ -77,8 +76,13 @@
         <h1 id="result-title">TIME UP!</h1>
         <h2 id="final-stats" style="color: var(--primary-color); font-size: 32px;">점수: 0</h2>
         <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="8" style="padding:12px; border-radius:8px; border:none; margin-bottom:15px; text-align:center; width:260px; color:#000;">
-        <button class="btn" id="save-btn" style="background:var(--primary-color); color:#000;">기록 등록</button>
-        <button class="btn" style="background:#555;" onclick="location.reload()">새로고침</button>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <button class="btn" id="save-btn" style="background:var(--primary-color); color:#000;">기록 등록</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" style="background:#555;" onclick="location.reload()">다시 하기</button>
+                <button class="btn" style="background:#3498db;" onclick="location.href='https://game-hub-steel-eight.vercel.app/'">허브로 이동</button>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -240,7 +244,6 @@
 
         function spawnTarget() {
             if (!scene) return;
-            // 예전의 정이십면체(Icosahedron) 디자인으로 복구 (Ver 1.4.0)
             const mesh = new THREE.Mesh(
                 new THREE.IcosahedronGeometry(targetSize, 0), 
                 new THREE.MeshPhongMaterial({ color: 0xff4757, flatShading: true, shininess: 100 })
