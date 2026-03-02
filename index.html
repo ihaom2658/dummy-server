@@ -10,7 +10,7 @@
         body { margin: 0; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; scroll-behavior: smooth; overflow-x: hidden; }
         
         /* 레이아웃 */
-        .overlay { width: 100%; min-height: 100vh; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; padding-top: 60px; position: relative; z-index: 100; }
+        .overlay { width: 100%; min-height: 100vh; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; padding-top: 40px; position: relative; z-index: 100; }
         .hidden { display: none !important; }
         
         /* 버튼 스타일 */
@@ -18,7 +18,11 @@
         .btn { padding: 15px 40px; font-size: 20px; cursor: pointer; font-weight: bold; border: none; border-radius: 8px; transition: 0.2s; color: white; outline: none; }
         .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
         
-        /* 랭킹 스타일 (금은동 유지) */
+        /* 메인 상단 큰 허브 버튼 */
+        .hub-link-btn { width: 90%; max-width: 440px; padding: 18px; background: #222; color: #fff; border: 2px solid #444; border-radius: 12px; font-size: 18px; margin-bottom: 40px; text-decoration: none; display: flex; align-items: center; justify-content: center; transition: 0.3s; gap: 10px; }
+        .hub-link-btn:hover { background: #333; border-color: var(--primary-color); color: var(--primary-color); }
+
+        /* 랭킹 스타일 */
         #ranking-container { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; width: 440px; margin-top: 30px; border: 1px solid rgba(255,255,255,0.1); }
         .tab-menu { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
         .tab-btn { background: #333; color: white; border: none; padding: 10px 22px; cursor: pointer; border-radius: 6px; font-size: 14px; }
@@ -29,11 +33,10 @@
         table { width: 100%; border-collapse: collapse; text-align: center; font-size: 16px; }
         th, td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
 
-        /* 하단 텍스트 콘텐츠 (SEO 필수요소) */
+        /* 하단 텍스트 콘텐츠 */
         .content-section { max-width: 850px; width: 90%; margin: 60px 0; text-align: left; line-height: 2.0; color: #ccc; border-top: 1px solid #333; padding-top: 40px; }
         .content-section h2 { color: var(--primary-color); border-left: 5px solid var(--primary-color); padding-left: 15px; margin: 50px 0 25px; font-size: 28px; }
         .content-section h3 { color: #eee; margin-top: 35px; font-size: 22px; }
-        .content-section p { margin-bottom: 25px; font-size: 16px; }
 
         /* 인게임 UI */
         #game-ui { position: fixed; top: 25px; left: 25px; font-size: 26px; z-index: 200; display: none; text-shadow: 2px 2px 5px #000; font-weight: bold; }
@@ -47,9 +50,13 @@
     <div id="countdown-text"></div>
     <div id="crosshair"></div>
     <div id="game-ui">점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s</div>
-    <div id="version-tag">Ver 1.4.7</div>
+    <div id="version-tag">Ver 1.4.8</div>
 
     <div id="main-menu" class="overlay">
+        <a href="https://dummy-server-kdna.vercel.app/" class="hub-link-btn">
+            🏠 전체 게임 허브로 돌아가기
+        </a>
+
         <h1 style="color: var(--primary-color); font-size: 56px; letter-spacing: 6px; margin-bottom: 10px;">🎯 AIM TRAINER</h1>
         <p style="color: #888; margin-bottom: 30px; font-size: 18px;">무설치 브라우저 기반 FPS 트레이닝 허브</p>
         
@@ -91,8 +98,9 @@
         
         <div class="btn-group">
             <button class="btn" id="save-btn" style="background:var(--primary-color); color:#000;">기록 등록하기</button>
-            <button class="btn" style="background:#444;" onclick="location.reload()">메인 허브로 가기</button>
+            <button class="btn" style="background:#444;" onclick="location.reload()">연습장 다시 시작</button>
         </div>
+        <a href="https://dummy-server-kdna.vercel.app/" style="color: #888; margin-top: 20px;">전체 게임 허브로 가기</a>
     </div>
 
     <script type="module">
