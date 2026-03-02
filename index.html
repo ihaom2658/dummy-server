@@ -6,7 +6,12 @@
 <meta name="description" content="웹 기반 무설치 에임 연습장. FPS 에임 향상을 위한 무료 트레이닝 도구.">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4133279395991822" crossorigin="anonymous"></script>
 <style>
-:root { --primary-color: #f1c40f; }
+:root { 
+    --primary-color: #f1c40f; 
+    --gold: #ffd700;
+    --silver: #e0e0e0;
+    --bronze: #cd7f32;
+}
 body { margin: 0; background-color: #000; font-family: 'Pretendard', sans-serif; color: white; scroll-behavior: smooth; overflow-x: hidden; }
 .overlay { width: 100%; min-height: 100vh; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; padding-top: 60px; position: relative; z-index: 100; }
 .hidden { display: none !important; }
@@ -16,11 +21,18 @@ body { margin: 0; background-color: #000; font-family: 'Pretendard', sans-serif;
 .tab-menu { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
 .tab-btn { background: #333; color: white; border: none; padding: 10px 22px; cursor: pointer; border-radius: 6px; font-size: 14px; }
 .tab-btn.active { background: var(--primary-color); color: #000; font-weight: bold; }
-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; }
-th, td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-th { color: var(--primary-color); }
 
-/* 텍스트 콘텐츠 영역 확장 */
+/* 랭킹 테이블 스타일 확장 */
+table { width: 100%; border-collapse: collapse; text-align: center; font-size: 16px; }
+th, td { padding: 14px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+th { color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+
+/* 1, 2, 3위 강조 디자인 */
+.rank-1 { color: var(--gold); font-weight: bold; background: rgba(255, 215, 0, 0.05); }
+.rank-1 td:first-child { font-size: 22px; }
+.rank-2 { color: var(--silver); font-weight: bold; }
+.rank-3 { color: var(--bronze); font-weight: bold; }
+
 .content-section { max-width: 850px; width: 90%; margin: 60px 0; text-align: left; line-height: 2.0; color: #ccc; border-top: 1px solid #333; padding-top: 40px; }
 .content-section h2 { color: var(--primary-color); border-left: 5px solid var(--primary-color); padding-left: 15px; margin: 50px 0 25px; font-size: 28px; }
 .content-section h3 { color: #eee; margin-top: 30px; font-size: 20px; }
@@ -33,13 +45,11 @@ th { color: var(--primary-color); }
 canvas { position: fixed; top: 0; left: 0; z-index: 10; }
 </style>
 </head>
-    <script defer src="/_vercel/insights/script.js"></script>
-    </head>
 <body>
 <div id="countdown-text"></div>
 <div id="crosshair"></div>
 <div id="game-ui">점수: <span id="score">0</span> | 남은 시간: <span id="timer">30</span>s</div>
-<div id="version-tag">Ver 1.5.0</div>
+<div id="version-tag">Ver 1.5.1</div>
 
 <div id="main-menu" class="overlay">
 <h1 style="color: var(--primary-color); font-size: 56px; letter-spacing: 6px; margin-bottom: 10px;">🎯 AIM TRAINER</h1>
@@ -63,14 +73,6 @@ canvas { position: fixed; top: 0; left: 0; z-index: 10; }
 <div class="content-section">
 <h2>에임 트레이닝 마스터 가이드</h2>
 <p>FPS 게임의 정점은 결국 0.1초의 찰나에 결정됩니다. 본 연습장은 단순한 게임이 아닌, 게이머의 신경계를 자극하여 반응 속도와 정밀도를 극대화하기 위해 설계된 전문 트레이닝 플랫폼입니다.</p>
-<h3>1. 플릭샷(Flick Shot)과 트래킹(Tracking)</h3>
-<p>대부분의 FPS 게임에서는 갑자기 나타난 적을 빠르게 조준하는 '플릭샷'과 움직이는 적을 따라가는 '트래킹' 능력이 요구됩니다. 본 서비스의 NORMAL 모드는 표준적인 플릭 훈련을, HARD 모드는 고도의 정밀도를 요구하는 트래킹 기초 능력을 배양합니다.</p>
-<h3>2. 감도(Sensitivity) 설정의 중요성</h3>
-<p>자신에게 맞는 최적의 감도를 찾는 것은 에임의 시작입니다. 본 연습장은 Pointer Lock API를 통해 마우스 가속도를 배제한 원시 입력을 처리합니다.</p>
-<h3>3. 효과적인 훈련 루틴</h3>
-<p>하루 10분, 세 번의 세션을 추천합니다. EASY로 예열하고 NORMAL로 정확도를, HARD로 한계를 돌파하세요.</p>
-<h3>4. 랭킹 시스템을 통한 성취감 고취</h3>
-<p>Firebase 기반의 실시간 랭킹 시스템은 전 세계 유저들과의 상대적 위치를 실시간으로 확인시켜 줍니다.</p>
 </div>
 </div>
 
@@ -117,13 +119,23 @@ let html = "<table><tr><th>순위</th><th>닉네임</th><th>점수</th></tr>";
 let rank = 1;
 snap.forEach(doc => {
 const data = doc.data();
-html += `<tr><td>${rank++}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
+let rowClass = "";
+let rankDisplay = rank;
+
+// 순위별 디자인 로직 추가
+if (rank === 1) { rowClass = "rank-1"; rankDisplay = "🥇"; }
+else if (rank === 2) { rowClass = "rank-2"; rankDisplay = "🥈"; }
+else if (rank === 3) { rowClass = "rank-3"; rankDisplay = "🥉"; }
+
+html += `<tr class="${rowClass}"><td>${rankDisplay}</td><td>${data.name}</td><td>${data.score}</td></tr>`;
+rank++;
 });
 listDiv.innerHTML = (rank === 1) ? "데이터 없음" : html + "</table>";
 } catch(e) { listDiv.innerHTML = "로드 실패"; }
 };
 loadRanking('EASY');
 
+// ... 나머지 게임 로직은 동일 ...
 function cleanup() {
 gameActive = false; isCountdown = false;
 clearInterval(timerInterval); clearInterval(countdownInterval);
